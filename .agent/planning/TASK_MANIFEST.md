@@ -22,14 +22,14 @@ The agent should execute the highest-priority unblocked task in dependency order
 
 | ID | Pri | Status | Task | Depends On |
 |---|---|---|---|---|
-| P0-001 | P0 | TODO | Initialize repository structure | — |
-| P0-002 | P0 | TODO | Configure TypeScript strict mode | P0-001 |
-| P0-003 | P0 | TODO | Configure lint/format/test tooling | P0-001 |
-| P0-004 | P0 | TODO | Add environment validation and `.env.example` | P0-001 |
-| P0-005 | P0 | TODO | Add Docker Compose for PostgreSQL/pgvector/Redis/local storage | P0-001 |
-| P0-006 | P0 | TODO | Add CI pipeline | P0-003 |
-| P0-007 | P0 | TODO | Add base application shells for web/API/worker | P0-001 |
-| P0-008 | P0 | TODO | Add health/readiness endpoints | P0-007 |
+| P0-001 | P0 | DONE | Initialize repository structure | — |
+| P0-002 | P0 | DONE | Configure TypeScript strict mode | P0-001 |
+| P0-003 | P0 | DONE | Configure lint/format/test tooling | P0-001 |
+| P0-004 | P0 | DONE | Add environment validation and `.env.example` | P0-001 |
+| P0-005 | P0 | DONE | Add Docker Compose for PostgreSQL/pgvector/Redis/local storage | P0-001 |
+| P0-006 | P0 | DONE | Add CI pipeline | P0-003 |
+| P0-007 | P0 | DONE | Add base application shells for web/API/worker | P0-001 |
+| P0-008 | P0 | DONE | Add health/readiness endpoints | P0-007 |
 
 ## Phase 1 — Identity
 

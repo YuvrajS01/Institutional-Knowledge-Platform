@@ -6,80 +6,68 @@
 
 ## Current Phase
 
-Not started.
+Phase 0 (Foundation) — complete on task branch `feat/P0-001-repository-foundation`; awaiting PR approval and merge.
 
 ## Current Task
 
-None yet.
+Next unblocked: **P1-001** (Create institutions migration) — depends on P0-005 (DONE) and the merged Phase 0 branch.
 
 ## Current Branch
 
-`main`
+`feat/P0-001-repository-foundation` (Phase 0 foundation: P0-001 through P0-008)
 
 ## Overall Status
 
-`READY_TO_START`
+`PHASE_0_FOUNDATION_COMPLETE` — verification green; PR pending human approval before merging to `main`.
 
 ## Last Completed Task
 
-None.
+P0-008 (health/readiness endpoints), closing out Phase 0.
 
 ## What Is Working
 
-The repository currently contains the product specification and autonomous engineering documentation. Application implementation has not yet begun.
+- pnpm 10 monorepo with `apps/api`, `apps/web`, `apps/worker`, `packages/config`, `packages/shared`.
+- Strict TypeScript base config (`tsconfig.base.json`), ESLint flat config, Prettier, Vitest.
+- Zod-based environment validation in `@ikp/config` with per-service schemas and fail-fast boot.
+- Docker Compose: PostgreSQL+pgvector, Redis, MinIO (with bucket init) + healthchecks.
+- GitHub Actions CI: lint, build, typecheck, tests, migration-framework check against a real Postgres service.
+- Fastify API shell with error envelope (per API spec), request IDs, graceful shutdown.
+- Worker shell with health server.
+- Next.js web shell.
+- `node-pg-migrate` migration framework (`infra/migrations/`, `pnpm db:migrate`).
+- Health/readiness endpoints verified end-to-end against live Postgres + Redis (`/ready` reports `database: up, redis: up`).
 
 ## What Is Not Implemented
 
-- Application frontend
-- API/backend
-- Worker/document-processing pipeline
-- Database schema/migrations
-- Authentication implementation
-- Document upload
-- OCR
-- Search
-- RAG/institutional AI
-- Notifications
-- Production deployment
+- Phase 1+ (identity, multi-tenancy, documents, processing, search, AI, notifications, deployment).
+- No database schema beyond the migration framework (`pgmigrations` table only).
+- No authentication, RBAC, or tenant isolation yet.
+- No object-storage integration beyond the MinIO container.
 
 ## Active Blockers
 
-None.
+- Phase 0 PR requires human approval to merge into `main` (repository merge policy).
+- Phase 1 work should start from merged `main` after the Phase 0 PR is approved.
 
 ## Important Decisions
 
 - **Working product title:** Institutional Knowledge Platform.
 - Final commercial branding is intentionally deferred until MVP validation.
-- Technical identifiers should remain product-name agnostic.
-- The MVP should favor a modular architecture over premature microservices.
-- AI providers should be replaceable through adapters/interfaces.
-- Institutional AI must use permission-aware retrieval and authoritative document citations.
-- Git uses task branches and pull requests rather than direct development on `main`.
-- Agents may create branches, implement, test, commit, push, and open PRs; merging into `main` requires the repository's approval policy.
+- Technical identifiers remain product-name agnostic (`@ikp/*` package scope).
+- Stack: pnpm workspace; Fastify (API); Next.js (web); Vitest; ESLint flat config; Prettier; node-pg-migrate; PostgreSQL/pgvector; Redis; MinIO (S3-compatible).
+- API and worker use distinct port variables (`API_PORT`, `WORKER_PORT`) because they share the repo `.env`.
+- AI providers remain replaceable through adapters/interfaces.
+- Git uses task branches and pull requests; merging into `main` requires the repository's approval policy.
 
 ## Current Git State
 
-The initial documentation/repository setup should be committed before implementation begins.
-
-Expected first implementation flow:
+Task branch `feat/P0-001-repository-foundation` contains the complete Phase 0 foundation (8 atomic commits, one per task ID), all checks green:
 
 ```text
-main
-  ↓
-select first unblocked task
-  ↓
-feat/<TASK-ID>-<short-name>
-  ↓
-implement
-  ↓
-test
-  ↓
-commit
-  ↓
-push
-  ↓
-pull request
+install ✅  lint ✅  typecheck ✅  tests ✅ (15)  build ✅  format ✅  migrations ✅
 ```
+
+`main` is unchanged (still at the initial documentation commit).
 
 ## Model Handoff Instructions
 
@@ -99,20 +87,23 @@ When switching AI tools/models:
 
 | Check | Status |
 |---|---|
-| Repository structure | READY |
-| Documentation | READY |
-| Git workflow | READY |
-| Application build | NOT STARTED |
-| Unit tests | NOT STARTED |
-| Integration tests | NOT STARTED |
-| E2E tests | NOT STARTED |
+| Repository structure | PASS |
+| TypeScript strict typecheck | PASS |
+| Lint | PASS |
+| Format | PASS |
+| Build (all packages) | PASS |
+| Unit/integration tests | PASS (15) |
+| Migrations against Postgres | PASS |
+| Health/readiness live checks | PASS (API + worker) |
+| E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
 | AI/RAG evaluation | NOT STARTED |
 
 ## Next Recommended Action
 
-Start the highest-priority unblocked task in `.agent/planning/TASK_MANIFEST.md`.
+1. Get the Phase 0 PR reviewed and merged into `main`.
+2. Start **P1-001** (Create institutions migration) from updated `main` on branch `feat/P1-001-institutions-migration`.
 
 ## Last Updated
 
