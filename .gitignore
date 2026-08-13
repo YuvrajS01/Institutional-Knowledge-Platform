@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+build/
+.next/
+out/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Test output
+coverage/
+
+# Local caches/runtime
+.cache/
+.tmp/
+runtime/
+
+# IDE / OS
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local databases and user/runtime data
+*.sqlite
+*.sqlite3
+uploads/
+storage/
+data/
+
+# AI/model caches
+models/
+model-cache/
+huggingface-cache/
+ollama-data/
+ocr-cache/
+embedding-cache/
