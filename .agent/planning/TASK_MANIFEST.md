@@ -35,7 +35,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 
 | ID | Pri | Status | Task | Depends On |
 |---|---|---|---|---|
-| P1-001 | P0 | TODO | Create institutions migration | P0-005 |
+| P1-001 | P0 | DONE | Create institutions migration | P0-005 |
 | P1-002 | P0 | TODO | Create users/memberships migration | P1-001 |
 | P1-003 | P0 | TODO | Create departments migration | P1-001 |
 | P1-004 | P0 | TODO | Implement authentication | P1-002 |

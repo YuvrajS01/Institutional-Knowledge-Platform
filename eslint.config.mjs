@@ -17,5 +17,17 @@ export default tseslint.config(
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    files: ['infra/migrations/**/*.js'],
+    languageOptions: {
+      globals: {
+        exports: 'writable',
+        module: 'writable',
+        require: 'readonly',
+        process: 'readonly',
+        __dirname: 'readonly',
+      },
+    },
+  },
   prettier,
 );
