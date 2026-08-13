@@ -10,31 +10,33 @@ Phase 1 (Identity and Multi-Tenancy) — in progress.
 
 ## Current Task
 
-**P1-001** (Create institutions migration) — implementation complete on task branch `feat/P1-001-institutions-migration`; PR pending human approval.
+**P1-002** (Create users/memberships migration) — implementation complete on task branch `feat/P1-002-users-memberships-migration`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P1-001-institutions-migration`
+`feat/P1-002-users-memberships-migration`
 
 ## Overall Status
 
-`PHASE_1_IN_PROGRESS` — institutions schema done; users/memberships/departments/auth/RBAC/tenant helpers pending.
+`PHASE_1_IN_PROGRESS` — institutions + users + memberships schema done; departments/auth/RBAC/tenant helpers pending.
 
 ## Last Completed Task
 
-P1-001 (Create institutions migration) — applied and verified against local PostgreSQL.
+P1-002 (Create users/memberships migration) — applied and verified against local PostgreSQL.
 
 ## What Is Working
 
 - Everything from Phase 0 (merged into `main` via PR #1): pnpm monorepo, strict TS, ESLint/Prettier/Vitest, env validation, Docker Compose (pgvector/Redis/MinIO), CI, Fastify API shell, Next.js web shell, worker shell, health/readiness endpoints, `node-pg-migrate` framework.
-- `institutions` table (per `.agent/architecture/TECHNICAL_SPEC.md` §5):
+- `institutions` table (PR #2, per `.agent/architecture/TECHNICAL_SPEC.md` §5):
   - UUID PK (`gen_random_uuid()`), unique `slug`, `name`, `logo_url`, `status` enum (`ACTIVE`/`INACTIVE`/`SUSPENDED`), `timezone` (default `UTC`), `settings` JSONB, UTC `created_at`/`updated_at`.
   - Index on `status`; unique constraint on `slug`.
-  - Up/down migrations verified (`db:migrate` → insert/select → `db:migrate:down` drops → re-up).
+- `users` table (this PR): UUID PK, `email` with case-insensitive unique index (`lower(email)`), `name`, `phone`, `avatar_url`, `status` enum, UTC timestamps.
+- `institution_memberships` table (this PR): UUID PK, `institution_id` FK (CASCADE), `user_id` FK (CASCADE), `role` enum (`STUDENT`/`FACULTY`/`DEPARTMENT_ADMIN`/`APPROVER`/`INSTITUTION_ADMIN`/`PLATFORM_ADMIN`), nullable `department_id` (FK added in P1-003), `course`, `semester`, `created_at`. Unique `(institution_id, user_id)`; indexes on institution/user/role.
+- Up/down migrations verified for both (rollback on failure is transactional; `db:migrate:down` drops; re-up restores).
 
 ## What Is Not Implemented
 
-- Phase 1 remainder: users, memberships, departments migrations (P1-002, P1-003), authentication (P1-004), RBAC (P1-005), tenant-aware repository helpers (P1-006), cross-tenant security tests (P1-007), institution/department admin UI (P1-008).
+- Phase 1 remainder: departments migration (P1-003), authentication (P1-004), RBAC (P1-005), tenant-aware repository helpers (P1-006), cross-tenant security tests (P1-007), institution/department admin UI (P1-008).
 - Phases 2–10 (documents, processing, publishing, search, consumption, notifications, AI, hardening, production readiness).
 
 ## Active Blockers
@@ -54,10 +56,10 @@ P1-001 (Create institutions migration) — applied and verified against local Po
 
 ## Current Git State
 
-`main` contains the merged Phase 0 foundation. Task branch `feat/P1-001-institutions-migration` adds the institutions migration (1 atomic commit + docs), all checks green:
+`main` contains merged Phase 0 + P1-001. Task branch `feat/P1-002-users-memberships-migration` adds the users/memberships migration, all checks green:
 
 ```text
-install ✅  lint ✅  typecheck ✅ (7/7)  tests ✅ (15)  build ✅ (5/5)  format ✅  migrations ✅ (up/down/up)
+lint ✅  typecheck ✅ (7/7)  tests ✅ (15)  build ✅ (5/5)  format ✅  migrations ✅ (up/down/up, constraint checks)
 ```
 
 ## Model Handoff Instructions
@@ -93,7 +95,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P1-001 merges, start **P1-002** (Create users/memberships migration) from updated `main` on branch `feat/P1-002-users-memberships-migration`.
+After P1-002 merges, start **P1-003** (Create departments migration) from updated `main` on branch `feat/P1-003-departments-migration` — also adds the `department_id` FK to `institution_memberships`.
 
 ## Last Updated
 
