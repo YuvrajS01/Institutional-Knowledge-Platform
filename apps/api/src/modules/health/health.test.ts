@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { buildApp } from '../../app';
+import { buildApp } from '../../app.js';
+import type { ReadinessChecks } from './health.route.js';
 
 const up = async (): Promise<void> => {
   await Promise.resolve();
@@ -15,7 +16,7 @@ afterEach(async () => {
   await Promise.all(apps.splice(0).map((app) => app.close()));
 });
 
-async function makeApp(checks = { database: up, redis: up }) {
+async function makeApp(checks: ReadinessChecks = { database: up, redis: up }) {
   const app = await buildApp({ logger: false, checks });
   apps.push(app);
   return app;

@@ -11,6 +11,9 @@ export default defineConfig({
   test: {
     include: ['apps/**/*.test.ts', 'packages/**/*.test.ts'],
     environment: 'node',
+    globalSetup: ['./tests/integration/global-setup.ts'],
+    teardown: ['./tests/integration/global-teardown.ts'],
+    testTimeout: 20_000,
     coverage: {
       provider: 'v8',
       include: ['apps/**/src/**', 'packages/**/src/**'],
