@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 import { config as loadDotenv } from 'dotenv';
-import type { ZodType } from 'zod';
+import { z, type ZodTypeAny } from 'zod';
 
 const DEV_ENV_CANDIDATES = [
   path.resolve(process.cwd(), '../../.env'),
@@ -33,8 +33,15 @@ export function loadEnvFile(envPath?: string): void {
  * Validates `process.env` against a Zod schema and returns the parsed value.
  * Throws with a stable, human-readable message when validation fails so that
  * misconfigured services fail fast at boot instead of at first request.
+ *
+ * The return type is derived from the schema's *output* type (`z.output<S>`)
+ * rather than its input type, so `.default()`-ed fields are typed as their
+ * parsed value, not as optional.
  */
-export function parseEnv<T>(schema: ZodType<T>, source: NodeJS.ProcessEnv = process.env): T {
+export function parseEnv<S extends ZodTypeAny>(
+  schema: S,
+  source: NodeJS.ProcessEnv = process.env,
+): z.output<S> {
   const result = schema.safeParse(source);
   if (!result.success) {
     const issues = result.error.issues.map((issue) => {
