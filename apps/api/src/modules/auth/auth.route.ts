@@ -21,6 +21,8 @@ const AUTH_RATE_LIMIT = { max: 10, timeWindow: '1 minute' } as const;
 export interface AuthModuleOptions {
   pool: Pool;
   tokenConfig: TokenConfig;
+  /** Overrides the default 10/min per-route limit (used by tests). */
+  rateLimit?: { max: number; timeWindow: string };
 }
 
 export async function registerAuthRoutes(
@@ -29,8 +31,9 @@ export async function registerAuthRoutes(
 ): Promise<void> {
   const authService = new AuthService({ pool: options.pool, tokenConfig: options.tokenConfig });
   const authenticate = createAuthenticate(options.tokenConfig.secret);
+  const rateLimitConfig = options.rateLimit ?? AUTH_RATE_LIMIT;
 
-  app.post('/auth/login', { config: { rateLimit: AUTH_RATE_LIMIT } }, async (request, reply) => {
+  app.post('/auth/login', { config: { rateLimit: rateLimitConfig } }, async (request, reply) => {
     const parsed = loginSchema.safeParse(request.body);
     if (!parsed.success) {
       throw new AppError(
@@ -44,7 +47,7 @@ export async function registerAuthRoutes(
     return reply.status(200).send({ data });
   });
 
-  app.post('/auth/refresh', { config: { rateLimit: AUTH_RATE_LIMIT } }, async (request, reply) => {
+  app.post('/auth/refresh', { config: { rateLimit: rateLimitConfig } }, async (request, reply) => {
     const parsed = refreshSchema.safeParse(request.body);
     if (!parsed.success) {
       throw new AppError(
@@ -58,7 +61,7 @@ export async function registerAuthRoutes(
     return reply.status(200).send({ data });
   });
 
-  app.post('/auth/logout', { config: { rateLimit: AUTH_RATE_LIMIT } }, async (request, reply) => {
+  app.post('/auth/logout', { config: { rateLimit: rateLimitConfig } }, async (request, reply) => {
     const parsed = refreshSchema.safeParse(request.body);
     if (!parsed.success) {
       throw new AppError(
@@ -74,7 +77,7 @@ export async function registerAuthRoutes(
 
   app.get(
     '/auth/me',
-    { preHandler: authenticate, config: { rateLimit: AUTH_RATE_LIMIT } },
+    { preHandler: authenticate, config: { rateLimit: rateLimitConfig } },
     async (request, reply) => {
       const data = await authService.me(request.user!.id);
       return reply.status(200).send({ data });

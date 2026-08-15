@@ -31,7 +31,7 @@ export async function seedIdentity(
   pool: PoolLike,
   options: SeedIdentityOptions = {},
 ): Promise<SeedIdentity> {
-  const suffix = randomUUID().slice(0, 8);
+  const suffix = randomUUID().replaceAll('-', '');
   const userEmail = `user-${suffix}@example.edu`;
 
   const institutionResult = await pool.query(

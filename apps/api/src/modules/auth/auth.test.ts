@@ -4,7 +4,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { buildApp } from '../../app.js';
 import {
-  closeTestPools,
   registerPool,
   requireTestDatabaseUrl,
 } from '../../../../../tests/integration/helpers/db.js';
@@ -20,28 +19,34 @@ const TEST_AUTH = {
   refreshTtlDays: 30,
 };
 
+// Shared apps get a high limit so other tests can never trip the counter;
+// the dedicated rate-limit test uses the production default on its own app.
+const TEST_RATE_LIMIT = { max: 1000, timeWindow: '1 minute' };
+
 let pool: Pool;
 let app: FastifyInstance;
 let identity: SeedIdentity;
+const seededUserIds = new Set<string>();
 
 beforeAll(async () => {
   pool = new Pool({ connectionString: requireTestDatabaseUrl() });
   registerPool(pool);
   identity = await seedIdentity(pool);
-  app = await buildApp({ logger: false, pool, auth: { pool, tokenConfig: TEST_AUTH } });
+  seededUserIds.add(identity.userId);
+  app = await buildApp({
+    logger: false,
+    pool,
+    auth: { pool, tokenConfig: TEST_AUTH },
+    authRateLimit: TEST_RATE_LIMIT,
+  });
 });
 
 afterEach(async () => {
-  await pool.query('DELETE FROM refresh_tokens');
+  await pool.query('DELETE FROM refresh_tokens WHERE user_id = ANY($1)', [[...seededUserIds]]);
 });
 
 afterAll(async () => {
   await app.close();
-  await pool.query('DELETE FROM institution_memberships');
-  await pool.query('DELETE FROM departments');
-  await pool.query('DELETE FROM users');
-  await pool.query('DELETE FROM institutions');
-  await closeTestPools();
 });
 
 async function login(email: string, password: string) {
@@ -82,6 +87,7 @@ describe('POST /api/v1/auth/login', () => {
 
   it('rejects an inactive user', async () => {
     const inactive = await seedIdentity(pool, { userStatus: 'INACTIVE' });
+    seededUserIds.add(inactive.userId);
     const response = await login(inactive.userEmail, SEED_PASSWORD);
 
     expect(response.statusCode).toBe(401);

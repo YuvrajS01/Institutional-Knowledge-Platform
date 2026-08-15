@@ -20,6 +20,9 @@ const TEST_AUTH = {
   refreshTtlDays: 30,
 };
 
+// High limit so the shared app's counter can never be tripped by the suite.
+const TEST_RATE_LIMIT = { max: 1000, timeWindow: '1 minute' };
+
 let pool: Pool;
 let app: FastifyInstance;
 let student: SeedIdentity;
@@ -33,7 +36,13 @@ async function login(identity: SeedIdentity): Promise<string> {
     url: '/api/v1/auth/login',
     payload: { email: identity.userEmail, password: SEED_PASSWORD },
   });
-  return response.json().data.access_token as string;
+  const body = response.json() as { data?: { access_token?: string }; error?: { code?: string } };
+  if (!body.data?.access_token) {
+    throw new Error(
+      `login failed for ${identity.userEmail}: status ${response.statusCode}, body ${JSON.stringify(body)}`,
+    );
+  }
+  return body.data.access_token;
 }
 
 async function callGuardedRoute(token: string, institutionId: string): Promise<number> {
@@ -54,12 +63,17 @@ beforeAll(async () => {
   admin = await seedIdentity(pool, { role: 'INSTITUTION_ADMIN' });
 
   const other = await pool.query(
-    "INSERT INTO institutions (name, slug) VALUES ('Other College', $1) RETURNING id",
-    [`other-college-${Date.now()}`],
+    'INSERT INTO institutions (name, slug) VALUES ($1, $2) RETURNING id',
+    ['Other College', `other-college-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`],
   );
   otherInstitutionId = (other.rows[0] as { id: string }).id;
 
-  app = await buildApp({ logger: false, pool, auth: { pool, tokenConfig: TEST_AUTH } });
+  app = await buildApp({
+    logger: false,
+    pool,
+    auth: { pool, tokenConfig: TEST_AUTH },
+    authRateLimit: TEST_RATE_LIMIT,
+  });
 
   const guard = createAuthorization({ jwtSecret: TEST_AUTH.secret, pool });
   app.get('/api/v1/test/audit-logs', { preHandler: guard('audit.read') }, async (request) => ({

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { createRequire } from 'node:module';
 
 import { apiRequire } from './helpers/require.js';
 
@@ -30,6 +31,9 @@ const runMigrations: MigrationRunner =
   'default' in nodePgMigrateModule && typeof nodePgMigrateModule.default === 'function'
     ? nodePgMigrateModule.default
     : (nodePgMigrateModule as MigrationRunner);
+
+// dotenv is a dependency of @ikp/config, not @ikp/api.
+const configRequire = createRequire(path.resolve(process.cwd(), 'packages/config/package.json'));
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), 'infra/migrations');
 
@@ -78,7 +82,7 @@ async function applyMigrations(testUrl: string): Promise<void> {
 
 export default async function globalSetup(): Promise<void> {
   if (!process.env.DATABASE_URL && !process.env.DATABASE_URL_TEST) {
-    const dotenv = require('dotenv') as { config: (options: { path: string }) => void };
+    const dotenv = configRequire('dotenv') as { config: (options: { path: string }) => void };
     dotenv.config({ path: path.resolve(process.cwd(), '.env') });
   }
 
