@@ -23,7 +23,10 @@ export interface RequestOptions {
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  const headers: Record<string, string> = {};
+  if (options.body !== undefined) {
+    headers['content-type'] = 'application/json';
+  }
   if (options.token) {
     headers.authorization = `Bearer ${options.token}`;
   }
