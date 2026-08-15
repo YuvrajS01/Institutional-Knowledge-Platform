@@ -10,32 +10,33 @@ Phase 2 (Document Core) — in progress.
 
 ## Current Task
 
-**P2-001** (Create document/document-version schema) — implementation complete on task branch `feat/P2-001-document-schema`; PR pending human approval.
+**P2-002** (Add object storage abstraction) — implementation complete on task branch `feat/P2-002-object-storage`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P2-001-document-schema`
+`feat/P2-002-object-storage`
 
 ## Overall Status
 
-`PHASE_2_IN_PROGRESS` — document schema done; storage abstraction, signed upload, CRUD service, lifecycle state machine, audit logs pending.
+`PHASE_2_IN_PROGRESS` — schema + storage abstraction done; signed upload, CRUD service, lifecycle, audit, admin UI pending.
 
 ## Last Completed Task
 
-P2-001 (Create document/document-version schema) — applied and verified against local PostgreSQL.
+P2-002 (Add object storage abstraction) — S3-compatible adapter verified against real MinIO.
 
 ## What Is Working
 
-- Everything from Phases 0–1 (merged into `main` via PRs #1–#9): monorepo tooling, identity/auth/RBAC, tenant repositories, security suite, admin UI.
-- Document core schema (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §5):
-  - `documents`: UUID PK, `institution_id` FK (CASCADE), `current_version_id` (circular FK → versions, SET NULL), `title`, `slug` (unique per institution), `document_type` enum (NOTICE/CIRCULAR/POLICY/FORM/SCHEDULE/REPORT/OTHER), `status` enum (DRAFT/IN_REVIEW/APPROVED/PUBLISHED/SUPERSEDED/ARCHIVED), `department_id` FK (SET NULL), `published_at`/`effective_from`/`effective_to`, `created_by` FK (RESTRICT), UTC timestamps.
-  - `document_versions`: UUID PK, `document_id` FK (CASCADE), `version_number` (unique per document), `storage_key` (unique), `mime_type`, `size_bytes`, `sha256`, `extracted_text`, `ocr_status`, `page_count`, `created_by`, `created_at`.
-  - Indexes on (institution, status), (institution, department), (institution, published_at), (institution, slug unique), status; versions (document, version) unique, storage_key unique.
-  - `DOCUMENT_TYPES`/`DocumentType` added to `@ikp/shared`.
+- Everything from Phases 0–1 + P2-001 (merged into `main` via PRs #1–#10).
+- Object storage layer (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §16 and the security checklist):
+  - `ObjectStorage` interface: `put`/`get`/`head`/`delete`/`presignPut`/`presignGet`; typed `StorageError` (NOT_FOUND/UNAVAILABLE); missing keys return null.
+  - `createS3ObjectStorage` via `@aws-sdk/client-s3` + `s3-request-presigner` (path-style, MinIO/R2-compatible; credentials/endpoint from env).
+  - `ensureStorageBucket` (idempotent, used by tests).
+  - `storage-keys.ts` — server-side key derivation per spec (`{inst}/documents/{doc}/v{ver}/original.{ext}`, `extracted.txt`, `ocr.json`, `preview/page-001.png`).
+  - CI `checks` job now runs a MinIO service so the adapter is integration-tested in CI.
 
 ## What Is Not Implemented
 
-- Phase 2 remainder: object storage (P2-002), signed upload (P2-003), document CRUD service (P2-004), lifecycle state machine (P2-005), audit logging (P2-006), admin document list UI (P2-007), upload/review UI (P2-008).
+- Phase 2 remainder: signed upload flow (P2-003), document CRUD service (P2-004), lifecycle state machine (P2-005), audit logging (P2-006), admin document list UI (P2-007), upload/review UI (P2-008).
 - Phases 3–10.
 
 ## Active Blockers
@@ -55,10 +56,10 @@ P2-001 (Create document/document-version schema) — applied and verified agains
 
 ## Current Git State
 
-`main` contains merged Phases 0–1. Task branch `feat/P2-001-document-schema` starts Phase 2, all checks green:
+`main` contains merged Phases 0–1 + P2-001. Task branch `feat/P2-002-object-storage` adds the storage layer, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (84)  build ✅ (6/6)  format ✅  migrations ✅ (up/down/up, 6 constraint checks)
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (93, incl. MinIO integration)  build ✅ (5/5)  format ✅
 ```
 
 ## Model Handoff Instructions
@@ -84,7 +85,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (84) |
+| Unit/integration tests | PASS (93) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -92,6 +93,7 @@ When switching AI tools/models:
 | Tenant repository isolation (cross-tenant) | PASS |
 | Cross-tenant security matrix (4 actors × 14 capabilities × 2 tenants) | PASS |
 | Admin API + web admin flow (live) | PASS |
+| Object storage (MinIO: put/get/head/presign/delete) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -99,7 +101,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P2-001 merges, start **P2-002** (Add object storage abstraction) from updated `main` on branch `feat/P2-002-object-storage`.
+After P2-002 merges, start **P2-003** (Implement signed upload flow) from updated `main` on branch `feat/P2-003-signed-upload`.
 
 ## Last Updated
 
