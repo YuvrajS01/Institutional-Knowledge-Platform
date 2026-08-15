@@ -187,16 +187,16 @@ export class DepartmentsRepository extends TenantRepository {
   async update(
     institutionId: string,
     id: string,
-    input: { name?: string; code?: string },
+    input: { name?: string; code?: string; status?: DepartmentStatus },
   ): Promise<DepartmentRow | null> {
     const tenantId = this.tenantId(institutionId);
     try {
       const result = await this.pool.query(
         `UPDATE departments d
-         SET name = COALESCE($3, d.name), code = COALESCE($4, d.code)
+         SET name = COALESCE($3, d.name), code = COALESCE($4, d.code), status = COALESCE($5, d.status)
          WHERE d.id = $2 AND ${this.tenantCondition('d', 1)}
          RETURNING ${SELECT_COLUMNS}`,
-        [tenantId, id, input.name ?? null, input.code ?? null],
+        [tenantId, id, input.name ?? null, input.code ?? null, input.status ?? null],
       );
       const row = result.rows[0];
       return row ? mapDepartmentRow(row as Record<string, unknown>) : null;

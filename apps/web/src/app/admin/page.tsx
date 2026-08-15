@@ -128,6 +128,25 @@ export default function AdminPage() {
     }
   }
 
+  async function reactivateDepartment(department: Department) {
+    setFormError(null);
+    setNotice(null);
+    const session = getSession();
+    if (!session) return;
+    try {
+      await apiRequest(`/departments/${department.id}`, {
+        method: 'PATCH',
+        token: session.accessToken,
+        institutionId: session.institutionId,
+        body: { status: 'ACTIVE' },
+      });
+      await refresh();
+      setNotice(`Department "${department.name}" reactivated.`);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Reactivation failed.');
+    }
+  }
+
   async function saveInstitution(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
@@ -256,7 +275,17 @@ export default function AdminPage() {
                       </button>
                     </td>
                   )}
-                  {canManage && department.status !== 'ACTIVE' && <td />}
+                  {canManage && department.status !== 'ACTIVE' && (
+                    <td>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => void reactivateDepartment(department)}
+                      >
+                        Activate
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

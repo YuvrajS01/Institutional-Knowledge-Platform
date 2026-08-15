@@ -27,8 +27,9 @@ const updateSchema = z
       .max(20)
       .transform((value) => value.toUpperCase())
       .optional(),
+    status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
   })
-  .refine((value) => value.name !== undefined || value.code !== undefined, {
+  .refine((value) => value.name !== undefined || value.code !== undefined || value.status !== undefined, {
     message: 'At least one field must be provided.',
   });
 
