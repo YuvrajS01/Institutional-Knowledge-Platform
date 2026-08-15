@@ -29,9 +29,12 @@ const updateSchema = z
       .optional(),
     status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
   })
-  .refine((value) => value.name !== undefined || value.code !== undefined || value.status !== undefined, {
-    message: 'At least one field must be provided.',
-  });
+  .refine(
+    (value) => value.name !== undefined || value.code !== undefined || value.status !== undefined,
+    {
+      message: 'At least one field must be provided.',
+    },
+  );
 
 const listQuerySchema = z.object({
   search: z.string().trim().max(200).optional(),

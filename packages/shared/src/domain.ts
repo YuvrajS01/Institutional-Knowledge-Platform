@@ -9,6 +9,18 @@ export const DOCUMENT_STATUSES = [
 
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
+export const DOCUMENT_TYPES = [
+  'NOTICE',
+  'CIRCULAR',
+  'POLICY',
+  'FORM',
+  'SCHEDULE',
+  'REPORT',
+  'OTHER',
+] as const;
+
+export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+
 export const ROLES = [
   'STUDENT',
   'FACULTY',
