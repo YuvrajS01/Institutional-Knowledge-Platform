@@ -19,6 +19,10 @@ export class AppError extends Error {
     return new AppError(ERROR_CODES.UNAUTHORIZED, message, 401);
   }
 
+  static forbidden(message = 'You do not have permission to perform this action.'): AppError {
+    return new AppError(ERROR_CODES.FORBIDDEN, message, 403);
+  }
+
   static internal(message = 'Internal server error.'): AppError {
     return new AppError(ERROR_CODES.INTERNAL_ERROR, message, 500);
   }

@@ -17,6 +17,11 @@ export interface SeedIdentity {
   userEmail: string;
 }
 
+export interface SeedIdentityOptions {
+  userStatus?: string;
+  role?: string;
+}
+
 /**
  * Seeds one institution, one department, and one ACTIVE user with a known
  * password and a membership in that institution. Every call uses unique
@@ -24,9 +29,9 @@ export interface SeedIdentity {
  */
 export async function seedIdentity(
   pool: PoolLike,
-  options: { userStatus?: string } = {},
+  options: SeedIdentityOptions = {},
 ): Promise<SeedIdentity> {
-  const suffix = randomUUID().slice(0, 8);
+  const suffix = randomUUID().replaceAll('-', '');
   const userEmail = `user-${suffix}@example.edu`;
 
   const institutionResult = await pool.query(
@@ -51,8 +56,8 @@ export async function seedIdentity(
 
   await pool.query(
     `INSERT INTO institution_memberships (institution_id, user_id, role, department_id, course, semester)
-     VALUES ($1, $2, 'STUDENT', $3, 'B.Tech', 6)`,
-    [institutionId, userId, departmentId],
+     VALUES ($1, $2, $3, $4, 'B.Tech', 6)`,
+    [institutionId, userId, options.role ?? 'STUDENT', departmentId],
   );
 
   return { institutionId, departmentId, userId, userEmail };

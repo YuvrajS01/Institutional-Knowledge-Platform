@@ -17,6 +17,8 @@ export interface AppOptions {
   checks?: ReadinessChecks;
   pool?: Pool;
   auth?: AuthModuleOptions;
+  /** Overrides the default per-route rate limit used by auth endpoints. */
+  authRateLimit?: { max: number; timeWindow: string };
 }
 
 export async function buildApp(options: AppOptions = {}): Promise<FastifyInstance> {
@@ -47,6 +49,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
         await registerAuthRoutes(v1, {
           pool: options.pool!,
           tokenConfig: options.auth!.tokenConfig,
+          rateLimit: options.authRateLimit,
         });
       },
       { prefix: '/api/v1' },

@@ -10,38 +10,36 @@ Phase 1 (Identity and Multi-Tenancy) — in progress.
 
 ## Current Task
 
-**P1-004** (Implement authentication) — implementation complete on task branch `feat/P1-004-authentication`; PR pending human approval.
+**P1-005** (Implement RBAC) — implementation complete on task branch `feat/P1-005-rbac`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P1-004-authentication`
+`feat/P1-005-rbac`
 
 ## Overall Status
 
-`PHASE_1_IN_PROGRESS` — schema + authentication done; RBAC/tenant helpers/cross-tenant tests/admin UI pending.
+`PHASE_1_IN_PROGRESS` — schema, authentication, and RBAC done; tenant repository helpers, cross-tenant tests, and admin UI pending.
 
 ## Last Completed Task
 
-P1-004 (Implement authentication) — login/refresh/logout/me with JWT access tokens + rotated refresh tokens, verified live.
+P1-005 (Implement RBAC) — capability model + tenant-scoped authorization guard, fully tested.
 
 ## What Is Working
 
-- Everything from Phase 0 + P1-001/002/003 (merged into `main` via PRs #1–#4).
-- Authentication (this PR):
-  - `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh` (rotation), `POST /api/v1/auth/logout` (revoke), `GET /api/v1/auth/me` (user + memberships).
-  - Access tokens: JWT (HS256, jose), default 15 min TTL; refresh tokens: opaque, sha-256 hashed at rest, 30 day TTL, rotated on every refresh.
-  - `bcryptjs` password hashing; case-insensitive email lookup; inactive users cannot log in; login errors never reveal whether an account exists.
-  - Auth rate limit: 10 requests/min per route (429 envelope via `RATE_LIMITED`).
-  - `refresh_tokens` + `users.password_hash` migrations.
-  - `DATABASE_URL_TEST`-isolated integration test database (auto-created + migrated by vitest global setup).
-  - Identity seed script (`pnpm db:seed`): 1 institution, 3 departments, 5 role users (password `Password123!`, dev only).
-- CI: `checks` job now runs the whole test suite against a Postgres service container.
+- Everything from Phase 0 + P1-001..P1-004 (merged into `main` via PRs #1–#5).
+- RBAC (this PR):
+  - Capability model in `@ikp/shared` (`CAPABILITIES`, `ROLE_CAPABILITIES`, `hasCapability`) derived from the API authorization matrix; "optional" matrix cells default to deny.
+  - `createAuthorization({ jwtSecret, pool })` → `guard(capability)` returns Fastify preHandler chain (authenticate + authorize).
+  - Tenant scope from `X-Institution-Id` header — never trusted directly; resolved against memberships before any capability check (AGENTS.md §8 pattern).
+  - `request.institution = { id, role, departmentId }` for downstream code.
+  - `MembershipsRepository` extracted (shared by `/auth/me` and the guard); `AppError.forbidden()`.
+  - Cross-institution requests → 403; missing/malformed header → 400; unauthenticated → 401.
+- API spec sheet documents the `X-Institution-Id` convention.
 
 ## What Is Not Implemented
 
-- Phase 1 remainder: RBAC (P1-005), tenant-aware repository helpers (P1-006), cross-tenant security tests (P1-007), institution/department admin UI (P1-008).
-- Password reset/email verification (no email adapter yet; deferred).
-- MFA for administrators (security checklist item; deferred with docs note).
+- Phase 1 remainder: tenant-aware repository helpers (P1-006), cross-tenant security tests (P1-007), institution/department admin UI (P1-008).
+- Password reset/email verification; MFA for administrators (deferred, noted).
 - Phases 2–10.
 
 ## Active Blockers
@@ -61,10 +59,10 @@ P1-004 (Implement authentication) — login/refresh/logout/me with JWT access to
 
 ## Current Git State
 
-`main` contains merged Phase 0 + P1-001..P1-003. Task branch `feat/P1-004-authentication` adds authentication, all checks green:
+`main` contains merged Phase 0 + P1-001..P1-004. Task branch `feat/P1-005-rbac` adds RBAC, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (36, incl. DB integration)  build ✅ (5/5)  format ✅  migrations ✅  seed ✅  live login/me ✅
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (53, incl. RBAC integration)  build ✅ (5/5)  format ✅
 ```
 
 ## Model Handoff Instructions
@@ -90,10 +88,11 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (36) |
+| Unit/integration tests | PASS (53) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
+| RBAC guard (roles, tenant scope, cross-tenant) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -101,7 +100,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P1-004 merges, start **P1-005** (Implement RBAC) from updated `main` on branch `feat/P1-005-rbac`.
+After P1-005 merges, start **P1-006** (Implement tenant-aware repository helpers) from updated `main` on branch `feat/P1-006-tenant-repository-helpers`.
 
 ## Last Updated
 

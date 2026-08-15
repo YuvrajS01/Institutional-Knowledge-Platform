@@ -39,7 +39,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P1-002 | P0 | DONE | Create users/memberships migration | P1-001 |
 | P1-003 | P0 | DONE | Create departments migration | P1-001 |
 | P1-004 | P0 | DONE | Implement authentication | P1-002 |
-| P1-005 | P0 | TODO | Implement RBAC | P1-004 |
+| P1-005 | P0 | DONE | Implement RBAC | P1-004 |
 | P1-006 | P0 | TODO | Implement tenant-aware repository helpers | P1-002 |
 | P1-007 | P0 | TODO | Add cross-tenant security tests | P1-005,P1-006 |
 | P1-008 | P1 | TODO | Build institution/department admin UI | P1-005 |
