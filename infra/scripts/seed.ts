@@ -13,6 +13,8 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const require = createRequire(path.resolve(process.cwd(), 'package.json'));
+// dotenv is a dependency of @ikp/config, not @ikp/api.
+const configRequire = createRequire(path.resolve(process.cwd(), '../../packages/config/package.json'));
 const { Pool } = require('pg') as {
   Pool: new (options: { connectionString?: string }) => {
     query: (sql: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
@@ -58,7 +60,7 @@ const USERS: {
 
 async function main(): Promise<void> {
   if (!process.env.DATABASE_URL) {
-    require('dotenv').config({ path: path.resolve(process.cwd(), '../../.env') });
+    configRequire('dotenv').config({ path: path.resolve(process.cwd(), '../../.env') });
   }
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not set. Create a .env file from .env.example first.');

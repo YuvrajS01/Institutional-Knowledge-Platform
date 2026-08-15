@@ -61,7 +61,7 @@ beforeAll(async () => {
     authRateLimit: TEST_RATE_LIMIT,
   });
 
-  const guard = createAuthorization({ jwtSecret: TEST_AUTH.secret, pool });
+  const { guard } = createAuthorization({ jwtSecret: TEST_AUTH.secret, pool });
   for (const capability of MATRIX_CAPABILITIES) {
     app.get(
       `/api/v1/security-test/${capability}`,

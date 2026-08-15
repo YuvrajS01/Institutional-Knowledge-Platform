@@ -109,6 +109,41 @@ export class DepartmentsRepository extends TenantRepository {
     return row ? mapDepartmentRow(row as Record<string, unknown>) : null;
   }
 
+  private async countByFilters(
+    institutionId: string,
+    options: { search?: string; status?: DepartmentStatus },
+  ): Promise<number> {
+    const tenantId = this.tenantId(institutionId);
+    const conditions = [this.tenantCondition('d', 1)];
+    const params: unknown[] = [tenantId];
+
+    if (options.search) {
+      params.push(`%${options.search}%`);
+      conditions.push(`d.name ILIKE $${params.length}`);
+    }
+    if (options.status) {
+      params.push(options.status);
+      conditions.push(`d.status = $${params.length}`);
+    }
+
+    const result = await this.pool.query(
+      `SELECT count(*) AS total FROM departments d WHERE ${conditions.join(' AND ')}`,
+      params,
+    );
+    return Number((result.rows[0] as { total: string }).total);
+  }
+
+  async listWithTotal(
+    institutionId: string,
+    options: DepartmentListOptions = {},
+  ): Promise<{ rows: DepartmentRow[]; total: number }> {
+    const [rows, total] = await Promise.all([
+      this.list(institutionId, options),
+      this.countByFilters(institutionId, options),
+    ]);
+    return { rows, total };
+  }
+
   async create(institutionId: string, input: DepartmentInput): Promise<DepartmentRow> {
     const tenantId = this.tenantId(institutionId);
     try {
@@ -147,5 +182,34 @@ export class DepartmentsRepository extends TenantRepository {
     );
     const row = result.rows[0];
     return row ? mapDepartmentRow(row as Record<string, unknown>) : null;
+  }
+
+  async update(
+    institutionId: string,
+    id: string,
+    input: { name?: string; code?: string; status?: DepartmentStatus },
+  ): Promise<DepartmentRow | null> {
+    const tenantId = this.tenantId(institutionId);
+    try {
+      const result = await this.pool.query(
+        `UPDATE departments d
+         SET name = COALESCE($3, d.name), code = COALESCE($4, d.code), status = COALESCE($5, d.status)
+         WHERE d.id = $2 AND ${this.tenantCondition('d', 1)}
+         RETURNING ${SELECT_COLUMNS}`,
+        [tenantId, id, input.name ?? null, input.code ?? null, input.status ?? null],
+      );
+      const row = result.rows[0];
+      return row ? mapDepartmentRow(row as Record<string, unknown>) : null;
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new AppError(
+          ERROR_CODES.CONFLICT,
+          'A department with this code already exists in this institution.',
+          409,
+          { code: input.code },
+        );
+      }
+      throw error;
+    }
   }
 }

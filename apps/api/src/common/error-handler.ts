@@ -22,6 +22,15 @@ export function registerErrorHandlers(app: FastifyInstance): void {
         .send(envelope(error.code, error.message, error.details, request.id));
     }
 
+    // Framework-level client errors (empty JSON body, unsupported media type,
+    // payload too large, ...) carry a stable status code and must not surface
+    // as internal server errors.
+    if (error.statusCode && error.statusCode >= 400 && error.statusCode < 500) {
+      return reply
+        .status(error.statusCode)
+        .send(envelope(ERROR_CODES.VALIDATION_ERROR, 'Invalid request body.', {}, request.id));
+    }
+
     request.log.error({ err: error }, 'unhandled error');
     return reply
       .status(500)

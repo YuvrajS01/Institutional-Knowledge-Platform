@@ -77,4 +77,19 @@ describe('error envelope', () => {
     expect(body.error.request_id).toMatch(/^req_/);
     expect(body.error.details).toBeDefined();
   });
+
+  it('maps an empty JSON body to 400 VALIDATION_ERROR, not 500', async () => {
+    const app = await makeApp();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      headers: { 'content-type': 'application/json' },
+      payload: '',
+    });
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json();
+    expect(body.error.code).toBe('VALIDATION_ERROR');
+    expect(body.error.request_id).toMatch(/^req_/);
+  });
 });

@@ -9,8 +9,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "db:migrate": "node-pg-migrate up -m ../../infra/migrations --envPath ../../.env",
-    "db:migrate:down": "node-pg-migrate down -m ../../infra/migrations --envPath ../../.env",
+    "db:migrate": "node --env-file-if-exists=../../.env node_modules/node-pg-migrate/bin/node-pg-migrate.js up -m ../../infra/migrations",
+    "db:migrate:down": "node --env-file-if-exists=../../.env node_modules/node-pg-migrate/bin/node-pg-migrate.js down -m ../../infra/migrations",
     "db:seed": "tsx ../../infra/scripts/seed.ts"
   },
   "dependencies": {

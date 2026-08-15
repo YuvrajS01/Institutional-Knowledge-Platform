@@ -75,7 +75,7 @@ beforeAll(async () => {
     authRateLimit: TEST_RATE_LIMIT,
   });
 
-  const guard = createAuthorization({ jwtSecret: TEST_AUTH.secret, pool });
+  const { guard } = createAuthorization({ jwtSecret: TEST_AUTH.secret, pool });
   app.get('/api/v1/test/audit-logs', { preHandler: guard('audit.read') }, async (request) => ({
     data: { institution_id: request.institution!.id, role: request.institution!.role },
   }));
