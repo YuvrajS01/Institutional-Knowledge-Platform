@@ -67,16 +67,16 @@ Applications:
 
 ## Development Commands
 
-| Command                                    | Purpose                               |
-| ------------------------------------------ | ------------------------------------- |
-| `pnpm dev`                                 | Start all applications in watch mode  |
-| `pnpm build`                               | Production build of all packages      |
-| `pnpm typecheck`                           | Type check all packages (strict mode) |
-| `pnpm lint`                                | ESLint across the repository          |
-| `pnpm format` / `pnpm format:check`        | Prettier write / check                |
-| `pnpm test`                                | Vitest unit + integration tests       |
-| `pnpm db:migrate` / `pnpm db:migrate:down` | Run / roll back migrations |
-| `pnpm db:seed` | Seed development identity data (idempotent) |
+| Command                                    | Purpose                                     |
+| ------------------------------------------ | ------------------------------------------- |
+| `pnpm dev`                                 | Start all applications in watch mode        |
+| `pnpm build`                               | Production build of all packages            |
+| `pnpm typecheck`                           | Type check all packages (strict mode)       |
+| `pnpm lint`                                | ESLint across the repository                |
+| `pnpm format` / `pnpm format:check`        | Prettier write / check                      |
+| `pnpm test`                                | Vitest unit + integration tests             |
+| `pnpm db:migrate` / `pnpm db:migrate:down` | Run / roll back migrations                  |
+| `pnpm db:seed`                             | Seed development identity data (idempotent) |
 
 ## Environment
 
