@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { DbPool } from '../../infrastructure/db/db-pool.js';
 
 export interface UserRecord {
   id: string;
@@ -9,7 +9,7 @@ export interface UserRecord {
 }
 
 export class UsersRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: DbPool) {}
 
   async findByEmail(email: string): Promise<UserRecord | null> {
     const result = await this.pool.query(

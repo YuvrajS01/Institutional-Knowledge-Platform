@@ -1,3 +1,6 @@
+import type { DbPool } from '../../../apps/api/src/infrastructure/db/db-pool.js';
+import { apiRequire } from './require.js';
+
 export interface PoolLike {
   query: (sql: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
   end: () => Promise<void>;
@@ -22,4 +25,18 @@ export function requireTestDatabaseUrl(): string {
     );
   }
   return connectionString;
+}
+
+/**
+ * Creates a real `pg` pool bound to the test database (resolved via the api
+ * package so it works from any directory) and registers it for teardown.
+ */
+export function createTestPgPool(): DbPool {
+  const require = apiRequire();
+  const { Pool } = require('pg') as unknown as {
+    Pool: new (options: { connectionString: string }) => DbPool;
+  };
+  const pool = new Pool({ connectionString: requireTestDatabaseUrl() });
+  registerPool(pool);
+  return pool;
 }

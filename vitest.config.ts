@@ -9,7 +9,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['apps/**/*.test.ts', 'packages/**/*.test.ts'],
+    include: ['apps/**/*.test.ts', 'packages/**/*.test.ts', 'tests/**/*.test.ts'],
     environment: 'node',
     globalSetup: ['./tests/integration/global-setup.ts'],
     teardown: ['./tests/integration/global-teardown.ts'],

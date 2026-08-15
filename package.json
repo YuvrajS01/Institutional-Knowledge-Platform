@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:security": "vitest run tests/integration/security",
     "db:migrate": "pnpm --filter @ikp/api db:migrate",
     "db:migrate:down": "pnpm --filter @ikp/api db:migrate:down",
     "db:seed": "pnpm build:packages && pnpm --filter @ikp/api db:seed"

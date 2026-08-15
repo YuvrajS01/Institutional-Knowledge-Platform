@@ -1,7 +1,7 @@
 import type { Capability, Role } from '@ikp/shared';
 import { hasCapability, ROLES } from '@ikp/shared';
 import type { FastifyRequest } from 'fastify';
-import type { Pool } from 'pg';
+import type { DbPool } from '../../infrastructure/db/db-pool.js';
 import { z } from 'zod';
 
 import { AppError } from '../errors.js';
@@ -36,7 +36,7 @@ function parseInstitutionId(header: string | string[] | undefined): string {
  *
  * Returns the Fastify preHandler chain: authenticate, then authorize.
  */
-export function createAuthorization(options: { jwtSecret: string; pool: Pool }) {
+export function createAuthorization(options: { jwtSecret: string; pool: DbPool }) {
   const authenticate = createAuthenticate(options.jwtSecret);
   const memberships = new MembershipsRepository(options.pool);
 

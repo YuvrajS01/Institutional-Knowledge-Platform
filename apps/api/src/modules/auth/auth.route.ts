@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import type { Pool } from 'pg';
 import { z } from 'zod';
 
 import { createAuthenticate } from '../../common/auth/authenticate.js';
 import { AppError } from '../../common/errors.js';
+import type { DbPool } from '../../infrastructure/db/db-pool.js';
 import { AuthService } from './auth.service.js';
 import type { TokenConfig } from './tokens.js';
 
@@ -19,7 +19,7 @@ const refreshSchema = z.object({
 const AUTH_RATE_LIMIT = { max: 10, timeWindow: '1 minute' } as const;
 
 export interface AuthModuleOptions {
-  pool: Pool;
+  pool: DbPool;
   tokenConfig: TokenConfig;
   /** Overrides the default 10/min per-route limit (used by tests). */
   rateLimit?: { max: number; timeWindow: string };
