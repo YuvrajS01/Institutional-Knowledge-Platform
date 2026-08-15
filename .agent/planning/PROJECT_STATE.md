@@ -6,46 +6,37 @@
 
 ## Current Phase
 
-Phase 1 (Identity and Multi-Tenancy) — complete on task branch `feat/P1-008-admin-ui`; awaiting PR approval and merge.
+Phase 2 (Document Core) — in progress.
 
 ## Current Task
 
-**P1-008** (Build institution/department admin UI) — implementation complete on task branch `feat/P1-008-admin-ui`; PR pending human approval.
+**P2-001** (Create document/document-version schema) — implementation complete on task branch `feat/P2-001-document-schema`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P1-008-admin-ui`
+`feat/P2-001-document-schema`
 
 ## Overall Status
 
-`PHASE_1_COMPLETE` — identity, multi-tenancy, auth, RBAC, tenant repositories, security suite, and admin UI all delivered. Next: Phase 2 (Documents).
+`PHASE_2_IN_PROGRESS` — document schema done; storage abstraction, signed upload, CRUD service, lifecycle state machine, audit logs pending.
 
 ## Last Completed Task
 
-P1-008 (Build institution/department admin UI) — closes out Phase 1.
+P2-001 (Create document/document-version schema) — applied and verified against local PostgreSQL.
 
 ## What Is Working
 
-- Everything from Phase 0 + P1-001..P1-007 (merged into `main` via PRs #1–#8).
-- Admin API (this PR, per `.agent/api/API_SPEC_SHEET.md` §4–§5):
-  - `GET/PATCH /api/v1/institutions/current` (read: any member; patch: `institutions.manage`)
-  - `GET /api/v1/departments` (paginated, search/status filters, any member) · `GET /api/v1/departments/:id`
-  - `POST /api/v1/departments` (201, 409 on duplicate code) · `PATCH /api/v1/departments/:id` · `DELETE /api/v1/departments/:id` (soft deactivate → 204) — all `departments.manage`
-  - Rate limits: reads 300/min, writes 60/min per route.
-  - `createAuthorization` now exposes `guard(capability)` + `requireMember`.
-- Admin web UI (this PR):
-  - `/login` — email/password, stores session (tokens + institution) in localStorage, redirects to `/admin`.
-  - `/admin` — institution settings (name/timezone, admin only) and departments table with add/deactivate (admin only); loading/error/empty states; manage controls hidden for non-admins via `ROLE_CAPABILITIES`.
-  - `lib/api.ts` envelope client + `lib/auth.ts` session helpers; `@ikp/shared` consumed by the web app.
+- Everything from Phases 0–1 (merged into `main` via PRs #1–#9): monorepo tooling, identity/auth/RBAC, tenant repositories, security suite, admin UI.
+- Document core schema (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §5):
+  - `documents`: UUID PK, `institution_id` FK (CASCADE), `current_version_id` (circular FK → versions, SET NULL), `title`, `slug` (unique per institution), `document_type` enum (NOTICE/CIRCULAR/POLICY/FORM/SCHEDULE/REPORT/OTHER), `status` enum (DRAFT/IN_REVIEW/APPROVED/PUBLISHED/SUPERSEDED/ARCHIVED), `department_id` FK (SET NULL), `published_at`/`effective_from`/`effective_to`, `created_by` FK (RESTRICT), UTC timestamps.
+  - `document_versions`: UUID PK, `document_id` FK (CASCADE), `version_number` (unique per document), `storage_key` (unique), `mime_type`, `size_bytes`, `sha256`, `extracted_text`, `ocr_status`, `page_count`, `created_by`, `created_at`.
+  - Indexes on (institution, status), (institution, department), (institution, published_at), (institution, slug unique), status; versions (document, version) unique, storage_key unique.
+  - `DOCUMENT_TYPES`/`DocumentType` added to `@ikp/shared`.
 
 ## What Is Not Implemented
 
-- Phases 2–10: documents, processing, publishing, search, consumption, notifications, AI, hardening, production readiness.
-- TanStack Query deferred until the search UI (P5-010) where it adds more value; refresh-token rotation is not yet wired in the web client.
-
-## Active Blockers
-
-- P1-008 PR requires human approval to merge into `main` (repository merge policy).
+- Phase 2 remainder: object storage (P2-002), signed upload (P2-003), document CRUD service (P2-004), lifecycle state machine (P2-005), audit logging (P2-006), admin document list UI (P2-007), upload/review UI (P2-008).
+- Phases 3–10.
 
 ## Active Blockers
 
@@ -64,10 +55,10 @@ P1-008 (Build institution/department admin UI) — closes out Phase 1.
 
 ## Current Git State
 
-`main` contains merged Phase 0 + P1-001..P1-007. Task branch `feat/P1-008-admin-ui` completes Phase 1, all checks green:
+`main` contains merged Phases 0–1. Task branch `feat/P2-001-document-schema` starts Phase 2, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (83)  build ✅ (6/6 incl. web)  format ✅  live admin flow ✅ (login → list → create → student denied 403)
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (84)  build ✅ (6/6)  format ✅  migrations ✅ (up/down/up, 6 constraint checks)
 ```
 
 ## Model Handoff Instructions
@@ -93,7 +84,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (83) |
+| Unit/integration tests | PASS (84) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -108,7 +99,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P1-008 merges, start **Phase 2 — Documents**: **P2-001** (Create document/document-version schema) from updated `main` on branch `feat/P2-001-document-schema`.
+After P2-001 merges, start **P2-002** (Add object storage abstraction) from updated `main` on branch `feat/P2-002-object-storage`.
 
 ## Last Updated
 

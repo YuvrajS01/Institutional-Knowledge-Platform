@@ -48,7 +48,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 
 | ID | Pri | Status | Task | Depends On |
 |---|---|---|---|---|
-| P2-001 | P0 | TODO | Create document/document-version schema | P1-006 |
+| P2-001 | P0 | DONE | Create document/document-version schema | P1-006 |
 | P2-002 | P0 | TODO | Add object storage abstraction | P0-004 |
 | P2-003 | P0 | TODO | Implement signed upload flow | P2-001,P2-002 |
 | P2-004 | P0 | TODO | Implement document CRUD service | P2-001 |
