@@ -42,7 +42,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P1-005 | P0 | DONE | Implement RBAC | P1-004 |
 | P1-006 | P0 | DONE | Implement tenant-aware repository helpers | P1-002 |
 | P1-007 | P0 | DONE | Add cross-tenant security tests | P1-005,P1-006 |
-| P1-008 | P1 | TODO | Build institution/department admin UI | P1-005 |
+| P1-008 | P1 | DONE | Build institution/department admin UI | P1-005 |
 
 ## Phase 2 — Documents
 
