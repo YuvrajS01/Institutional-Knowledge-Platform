@@ -59,7 +59,7 @@ export default function AdminPage() {
         token: session.accessToken,
         institutionId: session.institutionId,
       }),
-      apiRequest<{ rows: Department[] }>('/departments?page=1&limit=100', {
+      apiRequest<Department[]>('/departments?page=1&limit=100', {
         token: session.accessToken,
         institutionId: session.institutionId,
       }),
@@ -70,7 +70,7 @@ export default function AdminPage() {
     setInstitution(current);
     setInstitutionName(current.name);
     setInstitutionTimezone(current.timezone);
-    setDepartments(list.rows);
+    setDepartments(list);
     setState({ phase: 'ready' });
   }
 
