@@ -28,6 +28,15 @@ async function main(): Promise<void> {
         await redis.ping();
       },
     },
+    pool,
+    auth: {
+      pool,
+      tokenConfig: {
+        secret: env.JWT_SECRET,
+        accessTtlMinutes: env.JWT_ACCESS_TTL_MINUTES,
+        refreshTtlDays: env.JWT_REFRESH_TTL_DAYS,
+      },
+    },
   });
 
   let shuttingDown = false;

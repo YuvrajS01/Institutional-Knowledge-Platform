@@ -48,7 +48,11 @@ docker compose up -d
 # 4. Run database migrations
 pnpm db:migrate
 
-# 5. Start all applications in watch mode
+# 5. (optional) Seed identity data — 1 institution, 3 departments,
+#    5 users (admin/approver/deptadmin/faculty/student), password: Password123!
+pnpm db:seed
+
+# 6. Start all applications in watch mode
 pnpm dev
 ```
 
@@ -71,11 +75,14 @@ Applications:
 | `pnpm lint`                                | ESLint across the repository          |
 | `pnpm format` / `pnpm format:check`        | Prettier write / check                |
 | `pnpm test`                                | Vitest unit + integration tests       |
-| `pnpm db:migrate` / `pnpm db:migrate:down` | Run / roll back migrations            |
+| `pnpm db:migrate` / `pnpm db:migrate:down` | Run / roll back migrations |
+| `pnpm db:seed` | Seed development identity data (idempotent) |
 
 ## Environment
 
 All services validate their environment at boot via `@ikp/config` (Zod schemas) and fail fast on missing or invalid configuration. See `.env.example` for the full variable list and `.agent/operations/ENVIRONMENT_MATRIX.md` for per-environment guidance. Never commit `.env`; production secrets come from the deployment environment.
+
+The test suite runs against an isolated database. Without `DATABASE_URL_TEST`, it derives `institutional_knowledge_test` from `DATABASE_URL` and creates it automatically.
 
 ## Health and Readiness
 

@@ -3,7 +3,7 @@ import type { Server } from 'node:http';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pino } from 'pino';
 
-import { createHealthServer } from './health';
+import { createHealthServer } from './health.js';
 
 const servers: Server[] = [];
 

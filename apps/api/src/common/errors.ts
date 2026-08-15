@@ -15,6 +15,10 @@ export class AppError extends Error {
     return new AppError(ERROR_CODES.NOT_FOUND, message, 404);
   }
 
+  static unauthorized(message = 'Authentication required.'): AppError {
+    return new AppError(ERROR_CODES.UNAUTHORIZED, message, 401);
+  }
+
   static internal(message = 'Internal server error.'): AppError {
     return new AppError(ERROR_CODES.INTERNAL_ERROR, message, 500);
   }

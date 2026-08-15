@@ -12,6 +12,14 @@ const loggingSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
 
+const DEV_JWT_SECRET = 'insecure-dev-only-secret-change-me-0123456789';
+
+const jwtSchema = z.object({
+  JWT_SECRET: z.string().min(32).default(DEV_JWT_SECRET),
+  JWT_ACCESS_TTL_MINUTES: z.coerce.number().int().positive().default(15),
+  JWT_REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(30),
+});
+
 export const apiEnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -20,6 +28,7 @@ export const apiEnvSchema = z
     DATABASE_URL: z.string().url(),
     REDIS_URL: z.string().url(),
     ...s3CredentialsSchema.shape,
+    ...jwtSchema.shape,
     ...loggingSchema.shape,
   })
   .superRefine((env, ctx) => {
@@ -31,6 +40,13 @@ export const apiEnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['S3_ACCESS_KEY'],
         message: 'Default MinIO credentials are not allowed in production',
+      });
+    }
+    if (env.NODE_ENV === 'production' && env.JWT_SECRET === DEV_JWT_SECRET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['JWT_SECRET'],
+        message: 'The development default JWT secret is not allowed in production',
       });
     }
   });
