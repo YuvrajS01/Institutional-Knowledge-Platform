@@ -10,35 +10,32 @@ Phase 1 (Identity and Multi-Tenancy) — in progress.
 
 ## Current Task
 
-**P1-005** (Implement RBAC) — implementation complete on task branch `feat/P1-005-rbac`; PR pending human approval.
+**P1-006** (Implement tenant-aware repository helpers) — implementation complete on task branch `feat/P1-006-tenant-repository-helpers`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P1-005-rbac`
+`feat/P1-006-tenant-repository-helpers`
 
 ## Overall Status
 
-`PHASE_1_IN_PROGRESS` — schema, authentication, and RBAC done; tenant repository helpers, cross-tenant tests, and admin UI pending.
+`PHASE_1_IN_PROGRESS` — schema, auth, RBAC, tenant repositories done; cross-tenant security suite and admin UI pending.
 
 ## Last Completed Task
 
-P1-005 (Implement RBAC) — capability model + tenant-scoped authorization guard, fully tested.
+P1-006 (Implement tenant-aware repository helpers) — `TenantRepository` base + reference `DepartmentsRepository` with cross-tenant regression tests.
 
 ## What Is Working
 
-- Everything from Phase 0 + P1-001..P1-004 (merged into `main` via PRs #1–#5).
-- RBAC (this PR):
-  - Capability model in `@ikp/shared` (`CAPABILITIES`, `ROLE_CAPABILITIES`, `hasCapability`) derived from the API authorization matrix; "optional" matrix cells default to deny.
-  - `createAuthorization({ jwtSecret, pool })` → `guard(capability)` returns Fastify preHandler chain (authenticate + authorize).
-  - Tenant scope from `X-Institution-Id` header — never trusted directly; resolved against memberships before any capability check (AGENTS.md §8 pattern).
-  - `request.institution = { id, role, departmentId }` for downstream code.
-  - `MembershipsRepository` extracted (shared by `/auth/me` and the guard); `AppError.forbidden()`.
-  - Cross-institution requests → 403; missing/malformed header → 400; unauthenticated → 401.
-- API spec sheet documents the `X-Institution-Id` convention.
+- Everything from Phase 0 + P1-001..P1-005 (merged into `main` via PRs #1–#6).
+- Tenant-aware repository layer (this PR):
+  - `TenantRepository` base class (`apps/api/src/infrastructure/db/tenant-repository.ts`): fail-fast `tenantId()` scope validation + `tenantCondition()` bound SQL fragment — tenant scope is explicit in every repository method (AGENTS.md §8).
+  - `DepartmentsRepository` (reference tenant-owned consumer, feeds P1-008): `list` (search/status/pagination), `findById`, `findByCode`, `create` (409 on duplicate code within tenant), `setStatus` (soft deactivation, API spec §5).
+  - `DEPARTMENT_STATUSES`/`DepartmentStatus` added to `@ikp/shared`.
+  - Cross-tenant regression tests: other-tenant rows never returned by id/code/list; same code allowed across tenants, rejected within one; status updates never cross tenants.
 
 ## What Is Not Implemented
 
-- Phase 1 remainder: tenant-aware repository helpers (P1-006), cross-tenant security tests (P1-007), institution/department admin UI (P1-008).
+- Phase 1 remainder: cross-tenant security tests (P1-007), institution/department admin UI (P1-008).
 - Password reset/email verification; MFA for administrators (deferred, noted).
 - Phases 2–10.
 
@@ -59,10 +56,10 @@ P1-005 (Implement RBAC) — capability model + tenant-scoped authorization guard
 
 ## Current Git State
 
-`main` contains merged Phase 0 + P1-001..P1-004. Task branch `feat/P1-005-rbac` adds RBAC, all checks green:
+`main` contains merged Phase 0 + P1-001..P1-005. Task branch `feat/P1-006-tenant-repository-helpers` adds the tenant repository layer, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (53, incl. RBAC integration)  build ✅ (5/5)  format ✅
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (66, incl. cross-tenant regression)  build ✅ (5/5)  format ✅
 ```
 
 ## Model Handoff Instructions
@@ -88,11 +85,12 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (53) |
+| Unit/integration tests | PASS (66) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
 | RBAC guard (roles, tenant scope, cross-tenant) | PASS |
+| Tenant repository isolation (cross-tenant) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -100,7 +98,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P1-005 merges, start **P1-006** (Implement tenant-aware repository helpers) from updated `main` on branch `feat/P1-006-tenant-repository-helpers`.
+After P1-006 merges, start **P1-007** (Add cross-tenant security tests) from updated `main` on branch `test/P1-007-cross-tenant-security`.
 
 ## Last Updated
 
