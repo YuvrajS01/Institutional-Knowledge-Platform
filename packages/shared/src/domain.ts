@@ -19,3 +19,7 @@ export const ROLES = [
 ] as const;
 
 export type Role = (typeof ROLES)[number];
+
+export const DEPARTMENT_STATUSES = ['ACTIVE', 'INACTIVE'] as const;
+
+export type DepartmentStatus = (typeof DEPARTMENT_STATUSES)[number];
