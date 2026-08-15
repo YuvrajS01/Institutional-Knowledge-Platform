@@ -14,7 +14,9 @@ import path from 'node:path';
 
 const require = createRequire(path.resolve(process.cwd(), 'package.json'));
 // dotenv is a dependency of @ikp/config, not @ikp/api.
-const configRequire = createRequire(path.resolve(process.cwd(), '../../packages/config/package.json'));
+const configRequire = createRequire(
+  path.resolve(process.cwd(), '../../packages/config/package.json'),
+);
 const { Pool } = require('pg') as {
   Pool: new (options: { connectionString?: string }) => {
     query: (sql: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
