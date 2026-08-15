@@ -2,6 +2,7 @@ import type { LoginResponse, MeResponse, RefreshResponse, Role } from '@ikp/shar
 import type { Pool } from 'pg';
 
 import { AppError } from '../../common/errors.js';
+import { MembershipsRepository } from './memberships.repository.js';
 import { verifyPassword } from './password.js';
 import { RefreshTokenRepository } from './refresh-token.repository.js';
 import {
@@ -24,11 +25,13 @@ export interface AuthServiceDeps {
 
 export class AuthService {
   private readonly users: UsersRepository;
+  private readonly memberships: MembershipsRepository;
   private readonly refreshTokens: RefreshTokenRepository;
   private readonly now: () => Date;
 
   constructor(private readonly deps: AuthServiceDeps) {
     this.users = new UsersRepository(deps.pool);
+    this.memberships = new MembershipsRepository(deps.pool);
     this.refreshTokens = new RefreshTokenRepository(deps.pool);
     this.now = deps.now ?? (() => new Date());
   }
@@ -98,7 +101,7 @@ export class AuthService {
     if (!user) {
       throw AppError.unauthorized('User no longer exists.');
     }
-    const memberships = await this.users.findMemberships(userId);
+    const memberships = await this.memberships.findMemberships(userId);
     return {
       id: user.id,
       name: user.name,

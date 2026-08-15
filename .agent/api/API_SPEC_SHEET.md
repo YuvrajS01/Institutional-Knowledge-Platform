@@ -17,6 +17,20 @@
 Authorization: Bearer <access_token>
 ```
 
+### Tenant context
+
+Tenant-scoped endpoints require the active institution:
+
+```http
+X-Institution-Id: <uuid>
+```
+
+The header is validated against the authenticated user's memberships before
+any tenant-scoped query runs; it is never trusted directly (see `AGENTS.md` §8).
+Responses use `400 VALIDATION_ERROR` for a missing/malformed header and
+`403 FORBIDDEN` when the user has no membership or lacks the required
+capability (RBAC, see `TECHNICAL_SPEC.md` §14–15).
+
 ### Content Type
 
 ```http

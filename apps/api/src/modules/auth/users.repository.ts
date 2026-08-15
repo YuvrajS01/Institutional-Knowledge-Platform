@@ -8,15 +8,6 @@ export interface UserRecord {
   status: string;
 }
 
-export interface MembershipRecord {
-  institution_id: string;
-  institution_name: string;
-  role: string;
-  department: string | null;
-  course: string | null;
-  semester: number | null;
-}
-
 export class UsersRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -54,31 +45,5 @@ export class UsersRepository {
       passwordHash: row.password_hash as string,
       status: row.status as string,
     };
-  }
-
-  async findMemberships(userId: string): Promise<MembershipRecord[]> {
-    const result = await this.pool.query(
-      `SELECT
-        m.institution_id,
-        i.name AS institution_name,
-        m.role,
-        d.name AS department,
-        m.course,
-        m.semester
-       FROM institution_memberships m
-       JOIN institutions i ON i.id = m.institution_id
-       LEFT JOIN departments d ON d.id = m.department_id
-       WHERE m.user_id = $1
-       ORDER BY i.created_at ASC`,
-      [userId],
-    );
-    return result.rows.map((row) => ({
-      institution_id: row.institution_id as string,
-      institution_name: row.institution_name as string,
-      role: row.role as string,
-      department: (row.department as string | null) ?? null,
-      course: (row.course as string | null) ?? null,
-      semester: (row.semester as number | null) ?? null,
-    }));
   }
 }
