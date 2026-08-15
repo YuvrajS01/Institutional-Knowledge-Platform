@@ -11,6 +11,9 @@ export default function HomePage() {
         validation. Search, documents, and the Ask Institution experience arrive with the MVP
         phases.
       </p>
+      <p>
+        <a href="/login">Sign in</a> · <a href="/admin">Admin</a>
+      </p>
     </main>
   );
 }
