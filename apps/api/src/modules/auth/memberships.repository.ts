@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { DbPool } from '../../infrastructure/db/db-pool.js';
 
 export interface MembershipRecord {
   institution_id: string;
@@ -11,7 +11,7 @@ export interface MembershipRecord {
 }
 
 export class MembershipsRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: DbPool) {}
 
   async findMemberships(userId: string): Promise<MembershipRecord[]> {
     const result = await this.pool.query(

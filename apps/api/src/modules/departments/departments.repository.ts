@@ -1,6 +1,6 @@
 import type { DepartmentStatus } from '@ikp/shared';
 import { ERROR_CODES } from '@ikp/shared';
-import type { Pool } from 'pg';
+import type { DbPool } from '../../infrastructure/db/db-pool.js';
 
 import { AppError } from '../../common/errors.js';
 import { TenantRepository } from '../../infrastructure/db/tenant-repository.js';
@@ -51,7 +51,7 @@ function isUniqueViolation(error: unknown): boolean {
  * the SQL; cross-tenant access returns nothing, never foreign rows.
  */
 export class DepartmentsRepository extends TenantRepository {
-  constructor(pool: Pool) {
+  constructor(pool: DbPool) {
     super(pool);
   }
 

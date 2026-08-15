@@ -1,7 +1,7 @@
 import type { LoginResponse, MeResponse, RefreshResponse, Role } from '@ikp/shared';
-import type { Pool } from 'pg';
 
 import { AppError } from '../../common/errors.js';
+import type { DbPool } from '../../infrastructure/db/db-pool.js';
 import { MembershipsRepository } from './memberships.repository.js';
 import { verifyPassword } from './password.js';
 import { RefreshTokenRepository } from './refresh-token.repository.js';
@@ -18,7 +18,7 @@ const INVALID_CREDENTIALS = 'Invalid email or password.';
 const INVALID_REFRESH_TOKEN = 'Invalid or expired refresh token.';
 
 export interface AuthServiceDeps {
-  pool: Pool;
+  pool: DbPool;
   tokenConfig: TokenConfig;
   now?: () => Date;
 }

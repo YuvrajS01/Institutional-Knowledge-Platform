@@ -1,7 +1,7 @@
-import type { Pool } from 'pg';
 import { z } from 'zod';
 
 import { AppError } from '../../common/errors.js';
+import type { DbPool } from './db-pool.js';
 
 const uuidSchema = z.string().uuid();
 
@@ -21,7 +21,7 @@ const uuidSchema = z.string().uuid();
  * Every tenant repository ships cross-tenant regression tests.
  */
 export abstract class TenantRepository {
-  protected constructor(protected readonly pool: Pool) {}
+  protected constructor(protected readonly pool: DbPool) {}
 
   /**
    * Validates the tenant scope and returns it for binding. Throws when the

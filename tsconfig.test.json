@@ -1,7 +1,11 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@ikp/config": ["./packages/config/src/index.ts"],
+      "@ikp/shared": ["./packages/shared/src/index.ts"]
+    }
   },
   "include": [
     "tests/**/*.ts",

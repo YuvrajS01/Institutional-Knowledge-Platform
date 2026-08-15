@@ -10,32 +10,32 @@ Phase 1 (Identity and Multi-Tenancy) — in progress.
 
 ## Current Task
 
-**P1-006** (Implement tenant-aware repository helpers) — implementation complete on task branch `feat/P1-006-tenant-repository-helpers`; PR pending human approval.
+**P1-007** (Add cross-tenant security tests) — implementation complete on task branch `test/P1-007-cross-tenant-security`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P1-006-tenant-repository-helpers`
+`test/P1-007-cross-tenant-security`
 
 ## Overall Status
 
-`PHASE_1_IN_PROGRESS` — schema, auth, RBAC, tenant repositories done; cross-tenant security suite and admin UI pending.
+`PHASE_1_IN_PROGRESS` — schema, auth, RBAC, tenant repositories, and the cross-tenant security suite done; admin UI pending.
 
 ## Last Completed Task
 
-P1-006 (Implement tenant-aware repository helpers) — `TenantRepository` base + reference `DepartmentsRepository` with cross-tenant regression tests.
+P1-007 (Add cross-tenant security tests) — dedicated `tests/integration/security/` suite proving tenant isolation and the full role×capability matrix.
 
 ## What Is Working
 
-- Everything from Phase 0 + P1-001..P1-005 (merged into `main` via PRs #1–#6).
-- Tenant-aware repository layer (this PR):
-  - `TenantRepository` base class (`apps/api/src/infrastructure/db/tenant-repository.ts`): fail-fast `tenantId()` scope validation + `tenantCondition()` bound SQL fragment — tenant scope is explicit in every repository method (AGENTS.md §8).
-  - `DepartmentsRepository` (reference tenant-owned consumer, feeds P1-008): `list` (search/status/pagination), `findById`, `findByCode`, `create` (409 on duplicate code within tenant), `setStatus` (soft deactivation, API spec §5).
-  - `DEPARTMENT_STATUSES`/`DepartmentStatus` added to `@ikp/shared`.
-  - Cross-tenant regression tests: other-tenant rows never returned by id/code/list; same code allowed across tenants, rejected within one; status updates never cross tenants.
+- Everything from Phase 0 + P1-001..P1-006 (merged into `main` via PRs #1–#7).
+- Cross-tenant security suite (this PR):
+  - `tests/integration/security/cross-tenant.test.ts`: 4 actors (student + admin in two tenants) × 14 capabilities × both tenants — every foreign-tenant request is 403 with `FORBIDDEN`; own-tenant access exactly matches `ROLE_CAPABILITIES`; denied responses leak no foreign-tenant identifiers.
+  - `DbPool` structural interface — repositories/app depend on it instead of `pg.Pool`, enabling the suite (and future modules) to run from any directory.
+  - `createTestPgPool()` + `seedInstitutionWithUsers()` helpers; vitest now includes `tests/**/*.test.ts`; `pnpm test:security` runs the suite alone.
 
 ## What Is Not Implemented
 
-- Phase 1 remainder: cross-tenant security tests (P1-007), institution/department admin UI (P1-008).
+- Phase 1 remainder: institution/department admin UI (P1-008).
+- Document-layer security tests (drafts/audience/signed URLs) arrive with Phases 2+; RAG boundaries in Phase 8 (P8-013).
 - Password reset/email verification; MFA for administrators (deferred, noted).
 - Phases 2–10.
 
@@ -56,10 +56,10 @@ P1-006 (Implement tenant-aware repository helpers) — `TenantRepository` base +
 
 ## Current Git State
 
-`main` contains merged Phase 0 + P1-001..P1-005. Task branch `feat/P1-006-tenant-repository-helpers` adds the tenant repository layer, all checks green:
+`main` contains merged Phase 0 + P1-001..P1-006. Task branch `test/P1-007-cross-tenant-security` adds the cross-tenant security suite, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (66, incl. cross-tenant regression)  build ✅ (5/5)  format ✅
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (69, incl. cross-tenant matrix)  build ✅ (5/5)  format ✅
 ```
 
 ## Model Handoff Instructions
@@ -85,12 +85,13 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (66) |
+| Unit/integration tests | PASS (69) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
 | RBAC guard (roles, tenant scope, cross-tenant) | PASS |
 | Tenant repository isolation (cross-tenant) | PASS |
+| Cross-tenant security matrix (4 actors × 14 capabilities × 2 tenants) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -98,7 +99,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P1-006 merges, start **P1-007** (Add cross-tenant security tests) from updated `main` on branch `test/P1-007-cross-tenant-security`.
+After P1-007 merges, start **P1-008** (Build institution/department admin UI) from updated `main` on branch `feat/P1-008-admin-ui` — completes Phase 1.
 
 ## Last Updated
 

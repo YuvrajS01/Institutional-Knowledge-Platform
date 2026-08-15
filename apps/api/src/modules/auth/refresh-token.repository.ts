@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import type { DbPool } from '../../infrastructure/db/db-pool.js';
 
 export interface RefreshTokenRow {
   id: string;
@@ -9,7 +9,7 @@ export interface RefreshTokenRow {
 }
 
 export class RefreshTokenRepository {
-  constructor(private readonly pool: Pool) {}
+  constructor(private readonly pool: DbPool) {}
 
   async create(userId: string, tokenHash: string, expiresAt: Date): Promise<void> {
     await this.pool.query(
