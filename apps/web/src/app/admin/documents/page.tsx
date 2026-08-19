@@ -1,6 +1,7 @@
 'use client';
 
 import { hasCapability, type DocumentStatus, type DocumentType, type Role } from '@ikp/shared';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -142,7 +143,12 @@ export default function AdminDocumentsPage() {
       )}
 
       <section className="card">
-        <h2>Documents</h2>
+        <div className="section-head">
+          <h2>Documents</h2>
+          <Link href="/admin/documents/upload" className="button">
+            Upload document
+          </Link>
+        </div>
         <form className="form inline" onSubmit={applyFilters}>
           <input
             placeholder="Search title…"

@@ -10,6 +10,7 @@ import { getSession, clearSession } from '../../lib/auth';
 const NAV_ITEMS = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/documents', label: 'Documents' },
+  { href: '/admin/documents/upload', label: 'Upload' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
