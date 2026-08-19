@@ -87,7 +87,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 
 | ID | Pri | Status | Task | Depends On |
 |---|---|---|---|---|
-| P5-001 | P0 | TODO | Add document chunk storage schema | P3-008 |
+| P5-001 | P0 | DONE | Add document chunk storage schema | P3-008 |
 | P5-002 | P0 | TODO | Add embedding provider interface | P5-001 |
 | P5-003 | P0 | TODO | Add local embedding adapter | P5-002 |
 | P5-004 | P0 | TODO | Generate/store embeddings | P5-003 |
