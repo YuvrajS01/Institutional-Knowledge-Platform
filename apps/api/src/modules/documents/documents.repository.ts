@@ -219,6 +219,11 @@ export class DocumentsRepository extends TenantRepository {
     params.push(filter.limit, filter.offset);
 
     const order = filter.sort === 'oldest' ? 'ASC' : 'DESC';
+    // When a lexical search is present, rank by ts_rank plus recency.
+    const rankOrder =
+      filter.search && built.searchTsQueryIndex
+        ? `ts_rank(d.search_vector, plainto_tsquery('english', $${built.searchTsQueryIndex})) DESC,`
+        : '';
     const result = await this.pool.query(
       `SELECT
          d.id, d.title, d.slug, d.document_type, d.status, d.department_id,
@@ -229,7 +234,7 @@ export class DocumentsRepository extends TenantRepository {
        LEFT JOIN departments dept ON dept.id = d.department_id
        LEFT JOIN document_metadata m ON m.document_id = d.id
        WHERE ${built.where.join(' AND ')}
-       ORDER BY d.created_at ${order}
+       ORDER BY ${rankOrder} d.created_at ${order}
        LIMIT $${params.length - 1} OFFSET $${params.length}`,
       params,
     );
@@ -258,6 +263,7 @@ export class DocumentsRepository extends TenantRepository {
   private buildListQuery(filter: Omit<DocumentListFilter, 'limit' | 'offset'>): {
     where: string[];
     params: unknown[];
+    searchTsQueryIndex?: number;
   } {
     // The tenant id is bound as $1; filter parameters start at $2.
     const where: string[] = [];
@@ -268,8 +274,13 @@ export class DocumentsRepository extends TenantRepository {
       return nextIndex++;
     };
 
+    let searchTsQueryIndex: number | undefined;
     if (filter.search) {
-      where.push(`d.title ILIKE $${push(`%${filter.search}%`)}`);
+      searchTsQueryIndex = push(filter.search);
+      const ilikeIdx = push(`%${filter.search}%`);
+      where.push(
+        `(d.search_vector @@ plainto_tsquery('english', $${searchTsQueryIndex}) OR d.title ILIKE $${ilikeIdx})`,
+      );
     }
     if (filter.department_id) {
       where.push(`d.department_id = $${push(filter.department_id)}`);
@@ -299,7 +310,7 @@ export class DocumentsRepository extends TenantRepository {
       where.push(`d.published_at <= $${push(filter.published_to)}`);
     }
 
-    return { where, params };
+    return { where, params, searchTsQueryIndex };
   }
 }
 

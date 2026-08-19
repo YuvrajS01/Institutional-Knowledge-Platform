@@ -389,6 +389,102 @@ describe('GET /api/v1/documents (CRUD)', () => {
   });
 });
 
+describe('GET /api/v1/documents (full-text search)', () => {
+  async function seedPublishedDocument(
+    token: string,
+    title = 'Published Notice',
+    extra: Record<string, unknown> = {},
+  ) {
+    const create = await createDocument(token, { title, ...extra });
+    const documentId = create.json().data.document.id as string;
+    await pool.query(
+      "UPDATE documents SET status = 'PUBLISHED', published_at = now() WHERE id = $1",
+      [documentId],
+    );
+    return documentId;
+  }
+
+  it('finds documents by stemmed terms that ILIKE would miss', async () => {
+    await seedPublishedDocument(adminToken, 'Holiday Schedule');
+
+    // plainto_tsquery('schedules') stems to 'schedul'; ILIKE '%schedules%'
+    // would not match 'Holiday Schedule'. FTS does.
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/documents?search=${encodeURIComponent('schedules')}&page=1&limit=10`,
+      headers: headers(adminToken),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.map((d: { title: string }) => d.title)).toContain(
+      'Holiday Schedule',
+    );
+  });
+
+  it('matches multi-word queries regardless of token order', async () => {
+    await seedPublishedDocument(adminToken, 'Refund Policy for Bus Fare');
+
+    // ILIKE '%fare refund%' would require the contiguous phrase; FTS ANDs
+    // the tokens so order does not matter.
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/documents?search=${encodeURIComponent('fare refund')}&page=1&limit=10`,
+      headers: headers(adminToken),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.map((d: { title: string }) => d.title)).toContain(
+      'Refund Policy for Bus Fare',
+    );
+  });
+
+  it('ranks more relevant title matches ahead of weaker ones', async () => {
+    await seedPublishedDocument(adminToken, 'Framistan Policy');
+    await seedPublishedDocument(adminToken, 'Framistan Framistan Circular');
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/documents?search=${encodeURIComponent('framistan')}&page=1&limit=10`,
+      headers: headers(adminToken),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const titles = response.json().data.map((d: { title: string }) => d.title);
+    const idxWeaker = titles.indexOf('Framistan Policy');
+    const idxStronger = titles.indexOf('Framistan Framistan Circular');
+    expect(idxStronger).toBeGreaterThanOrEqual(0);
+    expect(idxWeaker).toBeGreaterThanOrEqual(0);
+    expect(idxStronger).toBeLessThan(idxWeaker);
+  });
+
+  it('keeps search_vector in sync when a title is updated', async () => {
+    const created = await createDocument(adminToken, { title: 'Budget Approval Memo' });
+    const documentId = created.json().data.document.id as string;
+    await pool.query(
+      "UPDATE documents SET status = 'PUBLISHED', published_at = now() WHERE id = $1",
+      [documentId],
+    );
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/documents/${documentId}`,
+      headers: headers(adminToken),
+      payload: { title: 'Revised Zyzygy Budget' },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/documents?search=${encodeURIComponent('zyzygy')}&page=1&limit=10`,
+      headers: headers(adminToken),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.map((d: { title: string }) => d.title)).toContain(
+      'Revised Zyzygy Budget',
+    );
+  });
+});
+
 describe('PATCH /api/v1/documents/:id (CRUD)', () => {
   it('updates title and tags as the creator', async () => {
     const created = await createDocument(adminToken, { title: 'Original Title' });
