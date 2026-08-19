@@ -6,6 +6,9 @@ export default defineConfig({
     alias: {
       '@ikp/config': path.resolve(__dirname, 'packages/config/src/index.ts'),
       '@ikp/shared': path.resolve(__dirname, 'packages/shared/src/index.ts'),
+      '@ikp/processing': path.resolve(__dirname, 'packages/processing/src/index.ts'),
+      '@ikp/queue': path.resolve(__dirname, 'packages/queue/src/index.ts'),
+      '@ikp/storage': path.resolve(__dirname, 'packages/storage/src/index.ts'),
     },
   },
   test: {

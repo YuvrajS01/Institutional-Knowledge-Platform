@@ -53,6 +53,9 @@ importers:
       '@ikp/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@ikp/processing':
+        specifier: workspace:*
+        version: link:../../packages/processing
       '@ikp/queue':
         specifier: workspace:*
         version: link:../../packages/queue

@@ -45,3 +45,5 @@ huggingface-cache/
 ollama-data/
 ocr-cache/
 embedding-cache/
+*.traineddata
+eng.traineddata
