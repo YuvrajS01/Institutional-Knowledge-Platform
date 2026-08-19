@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import type {
   CreateDocumentUploadResponse,
+  DocumentStatus,
   DocumentType,
   UploadCompleteResponse,
 } from '@ikp/shared';
@@ -57,6 +58,71 @@ export interface DocumentUploadInput {
 export interface UploadActor {
   institutionId: string;
   userId: string;
+  role: string;
+}
+
+export interface DocumentListQuery {
+  search?: string;
+  department_id?: string;
+  document_type?: DocumentType;
+  status?: DocumentStatus;
+  academic_year?: string;
+  course?: string;
+  semester?: number;
+  tag?: string;
+  published_from?: string;
+  published_to?: string;
+  sort?: 'recent' | 'oldest';
+  page: number;
+  limit: number;
+}
+
+export interface DocumentListItemView {
+  id: string;
+  title: string;
+  document_type: DocumentType;
+  department: { id: string; name: string } | null;
+  status: DocumentStatus;
+  published_at: string | null;
+  summary: string | null;
+}
+
+export interface DocumentDetailView {
+  id: string;
+  title: string;
+  slug: string;
+  document_type: DocumentType;
+  status: DocumentStatus;
+  department: { id: string; name: string } | null;
+  published_at: string | null;
+  effective_from: string | null;
+  effective_to: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  metadata: {
+    academic_year: string | null;
+    course: string | null;
+    semester: number | null;
+    audience: Record<string, unknown>;
+    tags: string[];
+  };
+}
+
+/**
+ * Ordinary users (STUDENT/FACULTY) only see published documents; staff roles
+ * see the full workflow. Drafts never leak to ordinary users
+ * (`.agent/AGENTS.md` §5.3 / `.agent/architecture/TECHNICAL_SPEC.md` §15).
+ */
+function visibleStatusesForRole(role: string): DocumentStatus[] | undefined {
+  if (role === 'STUDENT' || role === 'FACULTY') {
+    return ['PUBLISHED'];
+  }
+  return undefined;
+}
+
+function isDocumentManager(role: string): boolean {
+  return role === 'APPROVER' || role === 'INSTITUTION_ADMIN' || role === 'PLATFORM_ADMIN';
 }
 
 export class DocumentsService {
@@ -206,6 +272,151 @@ export class DocumentsService {
     await this.documents.setCurrentVersion(actor.institutionId, documentId, version.id);
 
     return { document_id: documentId, processing_status: 'QUEUED' };
+  }
+
+  async list(
+    actor: UploadActor,
+    query: DocumentListQuery,
+  ): Promise<{ data: DocumentListItemView[]; total: number }> {
+    const statuses = query.status ? [query.status] : visibleStatusesForRole(actor.role);
+    const rows = await this.documents.list(actor.institutionId, {
+      search: query.search,
+      department_id: query.department_id,
+      document_type: query.document_type,
+      statuses,
+      academic_year: query.academic_year,
+      course: query.course,
+      semester: query.semester,
+      tag: query.tag,
+      published_from: query.published_from ? new Date(query.published_from) : undefined,
+      published_to: query.published_to ? new Date(query.published_to) : undefined,
+      sort: query.sort,
+      limit: query.limit,
+      offset: (query.page - 1) * query.limit,
+    });
+    const total = await this.documents.listCount(actor.institutionId, {
+      search: query.search,
+      department_id: query.department_id,
+      document_type: query.document_type,
+      statuses,
+      academic_year: query.academic_year,
+      course: query.course,
+      semester: query.semester,
+      tag: query.tag,
+      published_from: query.published_from ? new Date(query.published_from) : undefined,
+      published_to: query.published_to ? new Date(query.published_to) : undefined,
+    });
+
+    return {
+      data: rows.map((row) => ({
+        id: row.id,
+        title: row.title,
+        document_type: row.document_type,
+        department: row.department_id
+          ? { id: row.department_id, name: row.department_name ?? '' }
+          : null,
+        status: row.status,
+        published_at: row.published_at ? row.published_at.toISOString() : null,
+        summary: null,
+      })),
+      total,
+    };
+  }
+
+  async get(actor: UploadActor, documentId: string): Promise<DocumentDetailView | null> {
+    const document = await this.documents.findById(actor.institutionId, documentId);
+    if (!document) {
+      return null;
+    }
+    if (document.status !== 'PUBLISHED' && actor.role === 'STUDENT') {
+      // Never leak unpublished documents to ordinary users.
+      return null;
+    }
+    if (document.status !== 'PUBLISHED' && actor.role === 'FACULTY') {
+      return null;
+    }
+
+    const metadata = await this.metadata.findByDocumentId(actor.institutionId, documentId);
+    const department = document.department_id
+      ? await this.departmentName(actor.institutionId, document.department_id)
+      : null;
+
+    return {
+      id: document.id,
+      title: document.title,
+      slug: document.slug,
+      document_type: document.document_type,
+      status: document.status,
+      department,
+      published_at: document.published_at ? document.published_at.toISOString() : null,
+      effective_from: document.effective_from ? document.effective_from.toISOString() : null,
+      effective_to: document.effective_to ? document.effective_to.toISOString() : null,
+      created_by: document.created_by,
+      created_at: document.created_at.toISOString(),
+      updated_at: document.updated_at.toISOString(),
+      metadata: {
+        academic_year: metadata?.academic_year ?? null,
+        course: metadata?.course ?? null,
+        semester: metadata?.semester ?? null,
+        audience: metadata?.audience ?? {},
+        tags: (metadata?.tags as string[]) ?? [],
+      },
+    };
+  }
+
+  async updateMetadata(
+    actor: UploadActor,
+    documentId: string,
+    input: {
+      title?: string;
+      tags?: string[];
+      document_type?: DocumentType;
+      academic_year?: string | null;
+      course?: string | null;
+      semester?: number | null;
+      audience?: Record<string, unknown> | null;
+    },
+  ): Promise<DocumentDetailView | null> {
+    const document = await this.documents.findById(actor.institutionId, documentId);
+    if (!document) {
+      return null;
+    }
+    if (document.created_by !== actor.userId && !isDocumentManager(actor.role)) {
+      throw AppError.forbidden('Only the creator or a document manager can edit this document.');
+    }
+
+    if (input.title !== undefined) {
+      await this.documents.update(actor.institutionId, documentId, { title: input.title });
+    }
+    if (
+      input.tags !== undefined ||
+      input.academic_year !== undefined ||
+      input.course !== undefined ||
+      input.semester !== undefined ||
+      input.audience !== undefined
+    ) {
+      await this.metadata.update(documentId, actor.institutionId, {
+        tags: input.tags,
+        academic_year: input.academic_year,
+        course: input.course,
+        semester: input.semester,
+        audience: input.audience,
+      });
+    }
+
+    return this.get(actor, documentId);
+  }
+
+  private async departmentName(
+    institutionId: string,
+    departmentId: string,
+  ): Promise<{ id: string; name: string } | null> {
+    const result = await this.pool.query(
+      'SELECT id, name FROM departments WHERE id = $1 AND institution_id = $2',
+      [departmentId, institutionId],
+    );
+    const row = result.rows[0];
+    return row ? { id: row.id as string, name: row.name as string } : null;
   }
 
   private async maxUploadBytes(institutionId: string): Promise<number> {
