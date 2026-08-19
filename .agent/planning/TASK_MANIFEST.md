@@ -61,7 +61,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 
 | ID | Pri | Status | Task | Depends On |
 |---|---|---|---|---|
-| P3-001 | P0 | TODO | Add job queue abstraction | P0-005 |
+| P3-001 | P0 | DONE | Add job queue abstraction | P0-005 |
 | P3-002 | P0 | TODO | Implement PDF text extraction adapter | P3-001 |
 | P3-003 | P0 | TODO | Implement OCR adapter | P3-001 |
 | P3-004 | P0 | TODO | Implement processing orchestration | P3-002,P3-003 |
