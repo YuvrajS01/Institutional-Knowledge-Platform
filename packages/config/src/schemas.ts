@@ -55,8 +55,9 @@ export const workerEnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   WORKER_HOST: z.string().min(1).default('0.0.0.0'),
   WORKER_PORT: z.coerce.number().int().positive().default(4100),
-  DATABASE_URL: z.string().url().optional(),
-  REDIS_URL: z.string().url().optional(),
+  DATABASE_URL: z.string().url(),
+  REDIS_URL: z.string().url(),
+  ...s3CredentialsSchema.shape,
   ...loggingSchema.shape,
 });
 

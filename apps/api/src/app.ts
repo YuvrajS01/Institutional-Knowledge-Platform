@@ -17,6 +17,7 @@ import { registerInstitutionsRoutes } from './modules/institutions/institutions.
 import { registerDocumentsRoutes } from './modules/documents/documents.route.js';
 import { registerAuditRoutes } from './modules/audit/audit.route.js';
 import { AuditLogService } from './modules/audit/audit-log.service.js';
+import type { JobQueue } from '@ikp/queue';
 
 export interface AppOptions {
   logger?: FastifyServerOptions['logger'];
@@ -25,6 +26,7 @@ export interface AppOptions {
   pool?: DbPool;
   auth?: AuthModuleOptions;
   storage?: ObjectStorage;
+  queue?: JobQueue;
   /** Overrides the default per-route rate limit used by auth endpoints. */
   authRateLimit?: { max: number; timeWindow: string };
 }
@@ -72,6 +74,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
             pool: options.pool!,
             storage: options.storage,
             audit,
+            queue: options.queue,
             authorization,
           });
         }
