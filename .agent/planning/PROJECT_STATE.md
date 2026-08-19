@@ -10,33 +10,34 @@ Phase 2 (Document Core) — in progress.
 
 ## Current Task
 
-**P2-002** (Add object storage abstraction) — implementation complete on task branch `feat/P2-002-object-storage`; PR pending human approval.
+**P2-003** (Implement signed upload flow) — implementation complete on task branch `feat/P2-003-signed-upload`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P2-002-object-storage`
+`feat/P2-003-signed-upload`
 
 ## Overall Status
 
-`PHASE_2_IN_PROGRESS` — schema + storage abstraction done; signed upload, CRUD service, lifecycle, audit, admin UI pending.
+`PHASE_2_IN_PROGRESS` — schema, storage, and signed upload done; CRUD service, lifecycle, audit, admin UI pending.
 
 ## Last Completed Task
 
-P2-002 (Add object storage abstraction) — S3-compatible adapter verified against real MinIO.
+P2-003 (Implement signed upload flow) — `POST /documents` + `POST /documents/:id/upload-complete`, verified end-to-end.
 
 ## What Is Working
 
-- Everything from Phases 0–1 + P2-001 (merged into `main` via PRs #1–#10).
-- Object storage layer (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §16 and the security checklist):
-  - `ObjectStorage` interface: `put`/`get`/`head`/`delete`/`presignPut`/`presignGet`; typed `StorageError` (NOT_FOUND/UNAVAILABLE); missing keys return null.
-  - `createS3ObjectStorage` via `@aws-sdk/client-s3` + `s3-request-presigner` (path-style, MinIO/R2-compatible; credentials/endpoint from env).
-  - `ensureStorageBucket` (idempotent, used by tests).
-  - `storage-keys.ts` — server-side key derivation per spec (`{inst}/documents/{doc}/v{ver}/original.{ext}`, `extracted.txt`, `ocr.json`, `preview/page-001.png`).
-  - CI `checks` job now runs a MinIO service so the adapter is integration-tested in CI.
+- Everything from Phases 0–1 + P2-001/P2-002 (merged into `main` via PRs #1–#11).
+- Signed upload flow (this PR, per `.agent/api/API_SPEC_SHEET.md` §6):
+  - `POST /api/v1/documents` (`document.create`): creates a DRAFT document + `document_metadata` (audience etc.), derives a spec-compliant storage key, returns a presigned PUT URL (15 min, content-type pinned).
+  - `POST /api/v1/documents/:id/upload-complete` (`document.edit_draft`, creator-only): verifies the object exists (head), enforces size limit (settings `max_upload_mb`, default 25MB → 413), downloads to compute sha-256 (integrity + dedupe), registers version 1 with real mime/size/sha, sets `current_version_id`, returns `{ document_id, processing_status: 'QUEUED' }`. Idempotent replay → same response, no duplicate side effects.
+  - MIME allowlist (pdf/png/jpeg/gif/webp/txt/doc/docx) → 415 otherwise; tenant isolation → 404 across tenants.
+  - `document_metadata` table added (TECH_SPEC §5) to carry audience/tags/dates for the endpoint contract.
+  - Slug derived from title with uniqueness handling (per-tenant).
 
 ## What Is Not Implemented
 
-- Phase 2 remainder: signed upload flow (P2-003), document CRUD service (P2-004), lifecycle state machine (P2-005), audit logging (P2-006), admin document list UI (P2-007), upload/review UI (P2-008).
+- Phase 2 remainder: document CRUD service (P2-004), lifecycle state machine (P2-005), audit logging (P2-006), admin document list UI (P2-007), upload/review UI (P2-008).
+- Processing pipeline (Phase 3) — uploads report `QUEUED` but no worker consumes the queue yet.
 - Phases 3–10.
 
 ## Active Blockers
@@ -56,10 +57,10 @@ P2-002 (Add object storage abstraction) — S3-compatible adapter verified again
 
 ## Current Git State
 
-`main` contains merged Phases 0–1 + P2-001. Task branch `feat/P2-002-object-storage` adds the storage layer, all checks green:
+`main` contains merged Phases 0–1 + P2-001..P2-002. Task branch `feat/P2-003-signed-upload` adds the upload flow, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (93, incl. MinIO integration)  build ✅ (5/5)  format ✅
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (102, incl. upload round-trip vs MinIO)  build ✅ (5/5)  format ✅
 ```
 
 ## Model Handoff Instructions
@@ -85,7 +86,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (93) |
+| Unit/integration tests | PASS (102) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -94,6 +95,7 @@ When switching AI tools/models:
 | Cross-tenant security matrix (4 actors × 14 capabilities × 2 tenants) | PASS |
 | Admin API + web admin flow (live) | PASS |
 | Object storage (MinIO: put/get/head/presign/delete) | PASS |
+| Signed upload flow (create → presigned PUT → confirm, sha256) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -101,7 +103,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P2-002 merges, start **P2-003** (Implement signed upload flow) from updated `main` on branch `feat/P2-003-signed-upload`.
+After P2-003 merges, start **P2-004** (Implement document CRUD service) from updated `main` on branch `feat/P2-004-document-crud`.
 
 ## Last Updated
 

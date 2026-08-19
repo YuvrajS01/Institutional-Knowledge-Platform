@@ -4,6 +4,7 @@ import pino from 'pino';
 import { buildApp } from './app.js';
 import { createPool } from './infrastructure/db/pool.js';
 import { createRedisClient } from './infrastructure/redis.js';
+import { createS3ObjectStorage } from './infrastructure/storage/s3-object-storage.js';
 
 async function main(): Promise<void> {
   loadEnvFile();
@@ -13,6 +14,13 @@ async function main(): Promise<void> {
 
   const pool = createPool(env.DATABASE_URL);
   const redis = createRedisClient(env.REDIS_URL);
+  const storage = createS3ObjectStorage({
+    endpoint: env.S3_ENDPOINT,
+    region: env.S3_REGION,
+    bucket: env.S3_BUCKET,
+    accessKeyId: env.S3_ACCESS_KEY,
+    secretAccessKey: env.S3_SECRET_KEY,
+  });
 
   const app = await buildApp({
     logger: false,
@@ -29,6 +37,7 @@ async function main(): Promise<void> {
       },
     },
     pool,
+    storage,
     auth: {
       pool,
       tokenConfig: {

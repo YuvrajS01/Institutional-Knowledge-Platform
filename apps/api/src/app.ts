@@ -9,10 +9,12 @@ import { AppError } from './common/errors.js';
 import { generateRequestId } from './common/request-id.js';
 import { createAuthorization } from './common/auth/authorize.js';
 import type { DbPool } from './infrastructure/db/db-pool.js';
+import type { ObjectStorage } from './infrastructure/storage/object-storage.js';
 import { registerHealthRoutes, type ReadinessChecks } from './modules/health/health.route.js';
 import { registerAuthRoutes, type AuthModuleOptions } from './modules/auth/auth.route.js';
 import { registerDepartmentsRoutes } from './modules/departments/departments.route.js';
 import { registerInstitutionsRoutes } from './modules/institutions/institutions.route.js';
+import { registerDocumentsRoutes } from './modules/documents/documents.route.js';
 
 export interface AppOptions {
   logger?: FastifyServerOptions['logger'];
@@ -20,6 +22,7 @@ export interface AppOptions {
   checks?: ReadinessChecks;
   pool?: DbPool;
   auth?: AuthModuleOptions;
+  storage?: ObjectStorage;
   /** Overrides the default per-route rate limit used by auth endpoints. */
   authRateLimit?: { max: number; timeWindow: string };
 }
@@ -61,6 +64,13 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
         });
         await registerDepartmentsRoutes(v1, { pool: options.pool!, authorization });
         await registerInstitutionsRoutes(v1, { pool: options.pool!, authorization });
+        if (options.storage) {
+          await registerDocumentsRoutes(v1, {
+            pool: options.pool!,
+            storage: options.storage,
+            authorization,
+          });
+        }
       },
       { prefix: '/api/v1' },
     );
