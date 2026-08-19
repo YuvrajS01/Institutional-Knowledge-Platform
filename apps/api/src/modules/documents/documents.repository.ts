@@ -159,6 +159,24 @@ export class DocumentsRepository extends TenantRepository {
     );
   }
 
+  async updateStatus(
+    institutionId: string,
+    id: string,
+    status: DocumentStatus,
+    options: { published_at?: Date | null } = {},
+  ): Promise<DocumentRow | null> {
+    const tenantId = this.tenantId(institutionId);
+    const result = await this.pool.query(
+      `UPDATE documents d
+       SET status = $3, published_at = COALESCE($4, d.published_at), updated_at = now()
+       WHERE d.id = $2 AND ${this.tenantCondition('d', 1)}
+       RETURNING ${SELECT_COLUMNS}`,
+      [tenantId, id, status, options.published_at === undefined ? null : options.published_at],
+    );
+    const row = result.rows[0];
+    return row ? mapDocumentRow(row as Record<string, unknown>) : null;
+  }
+
   async update(
     institutionId: string,
     id: string,
