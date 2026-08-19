@@ -10,34 +10,34 @@ Phase 2 (Document Core) — in progress.
 
 ## Current Task
 
-**P2-003** (Implement signed upload flow) — implementation complete on task branch `feat/P2-003-signed-upload`; PR pending human approval.
+**P2-004** (Implement document CRUD service) — implementation complete on task branch `feat/P2-004-document-crud`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P2-003-signed-upload`
+`feat/P2-004-document-crud`
 
 ## Overall Status
 
-`PHASE_2_IN_PROGRESS` — schema, storage, and signed upload done; CRUD service, lifecycle, audit, admin UI pending.
+`PHASE_2_IN_PROGRESS` — schema, storage, upload, CRUD done; lifecycle, audit, admin UI pending.
 
 ## Last Completed Task
 
-P2-003 (Implement signed upload flow) — `POST /documents` + `POST /documents/:id/upload-complete`, verified end-to-end.
+P2-004 (Implement document CRUD service) — list/detail/update endpoints with visibility rules.
 
 ## What Is Working
 
-- Everything from Phases 0–1 + P2-001/P2-002 (merged into `main` via PRs #1–#11).
-- Signed upload flow (this PR, per `.agent/api/API_SPEC_SHEET.md` §6):
-  - `POST /api/v1/documents` (`document.create`): creates a DRAFT document + `document_metadata` (audience etc.), derives a spec-compliant storage key, returns a presigned PUT URL (15 min, content-type pinned).
-  - `POST /api/v1/documents/:id/upload-complete` (`document.edit_draft`, creator-only): verifies the object exists (head), enforces size limit (settings `max_upload_mb`, default 25MB → 413), downloads to compute sha-256 (integrity + dedupe), registers version 1 with real mime/size/sha, sets `current_version_id`, returns `{ document_id, processing_status: 'QUEUED' }`. Idempotent replay → same response, no duplicate side effects.
-  - MIME allowlist (pdf/png/jpeg/gif/webp/txt/doc/docx) → 415 otherwise; tenant isolation → 404 across tenants.
-  - `document_metadata` table added (TECH_SPEC §5) to carry audience/tags/dates for the endpoint contract.
-  - Slug derived from title with uniqueness handling (per-tenant).
+- Everything from Phases 0–1 + P2-001..P2-003 (merged into `main` via PRs #1–#12).
+- Document CRUD (this PR, per `.agent/api/API_SPEC_SHEET.md` §6):
+  - `GET /api/v1/documents` (any member): filters — search (title), department, document_type, status, academic_year, course, semester, tag, published_from/to, sort, pagination (page/limit/total).
+  - `GET /api/v1/documents/:id` (any member): full detail + metadata (audience, tags, academic year/course/semester).
+  - `PATCH /api/v1/documents/:id` (`document.edit_draft`): title, tags, document_type, academic fields, audience; creator or document manager (APPROVER/INSTITUTION_ADMIN/PLATFORM_ADMIN).
+  - **Visibility**: STUDENT/FACULTY only see `PUBLISHED` (list + detail → 404 for drafts); staff see the full workflow. Drafts never leak to ordinary users.
+  - Tenant isolation on all reads/writes (404 across tenants).
 
 ## What Is Not Implemented
 
-- Phase 2 remainder: document CRUD service (P2-004), lifecycle state machine (P2-005), audit logging (P2-006), admin document list UI (P2-007), upload/review UI (P2-008).
-- Processing pipeline (Phase 3) — uploads report `QUEUED` but no worker consumes the queue yet.
+- Phase 2 remainder: lifecycle state machine (P2-005), audit logging (P2-006), admin document list UI (P2-007), upload/review UI (P2-008).
+- Publish/archive/supersede transitions (Phase 4).
 - Phases 3–10.
 
 ## Active Blockers
@@ -57,10 +57,10 @@ P2-003 (Implement signed upload flow) — `POST /documents` + `POST /documents/:
 
 ## Current Git State
 
-`main` contains merged Phases 0–1 + P2-001..P2-002. Task branch `feat/P2-003-signed-upload` adds the upload flow, all checks green:
+`main` contains merged Phases 0–1 + P2-001..P2-003. Task branch `feat/P2-004-document-crud` adds the CRUD layer, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (102, incl. upload round-trip vs MinIO)  build ✅ (5/5)  format ✅
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (113, incl. visibility + tenant isolation)  build ✅ (5/5)  format ✅
 ```
 
 ## Model Handoff Instructions
@@ -86,7 +86,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (102) |
+| Unit/integration tests | PASS (113) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -96,6 +96,7 @@ When switching AI tools/models:
 | Admin API + web admin flow (live) | PASS |
 | Object storage (MinIO: put/get/head/presign/delete) | PASS |
 | Signed upload flow (create → presigned PUT → confirm, sha256) | PASS |
+| Document CRUD + visibility (draft hidden from students) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -103,7 +104,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P2-003 merges, start **P2-004** (Implement document CRUD service) from updated `main` on branch `feat/P2-004-document-crud`.
+After P2-004 merges, start **P2-005** (Implement lifecycle state machine) from updated `main` on branch `feat/P2-005-lifecycle`.
 
 ## Last Updated
 
