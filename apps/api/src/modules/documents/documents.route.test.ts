@@ -15,6 +15,7 @@ import {
 } from '../../../../../tests/integration/helpers/db.js';
 import {
   SEED_PASSWORD,
+  seedIdentity,
   seedInstitutionWithUsers,
   type SeedIdentity,
 } from '../../../../../tests/integration/helpers/seed.js';
@@ -256,5 +257,223 @@ describe('POST /api/v1/documents/:id/upload-complete', () => {
     });
 
     expect(confirm.statusCode).toBe(404);
+  });
+});
+
+describe('GET /api/v1/documents (CRUD)', () => {
+  async function seedPublishedDocument(
+    token: string,
+    title = 'Published Notice',
+    extra: Record<string, unknown> = {},
+  ) {
+    const create = await createDocument(token, { title, ...extra });
+    const documentId = create.json().data.document.id as string;
+    await pool.query(
+      "UPDATE documents SET status = 'PUBLISHED', published_at = now() WHERE id = $1",
+      [documentId],
+    );
+    return documentId;
+  }
+
+  it('lists documents with pagination metadata for a member', async () => {
+    await seedPublishedDocument(adminToken);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/documents?page=1&limit=10',
+      headers: headers(adminToken),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(body.meta).toMatchObject({ page: 1, limit: 10 });
+    expect(body.meta.total).toBeGreaterThanOrEqual(1);
+  });
+
+  it('filters by search, department, and document type', async () => {
+    const created = await createDocument(adminToken, {
+      title: 'Hostel Fee Circular',
+      document_type: 'CIRCULAR',
+    });
+    const documentId = created.json().data.document.id as string;
+    await pool.query(
+      "UPDATE documents SET status = 'PUBLISHED', published_at = now() WHERE id = $1",
+      [documentId],
+    );
+
+    const search = await app.inject({
+      method: 'GET',
+      url: `/api/v1/documents?search=${encodeURIComponent('hostel')}&page=1&limit=10`,
+      headers: headers(adminToken),
+    });
+    expect(search.json().data[0].title).toBe('Hostel Fee Circular');
+
+    const typeFiltered = await app.inject({
+      method: 'GET',
+      url: '/api/v1/documents?document_type=CIRCULAR&page=1&limit=10',
+      headers: headers(adminToken),
+    });
+    for (const row of typeFiltered.json().data) {
+      expect(row.document_type).toBe('CIRCULAR');
+    }
+  });
+
+  it('shows only published documents to a student', async () => {
+    await createDocument(adminToken, { title: 'Hidden Draft' });
+    await seedPublishedDocument(adminToken, 'Visible Published Doc');
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/documents?page=1&limit=100',
+      headers: headers(studentToken),
+    });
+
+    expect(response.statusCode).toBe(200);
+    for (const row of response.json().data) {
+      expect(row.status).toBe('PUBLISHED');
+      expect(row.title).not.toBe('Hidden Draft');
+    }
+  });
+
+  it('returns detail with metadata for a member', async () => {
+    const created = await createDocument(adminToken, {
+      title: 'Detail Doc',
+      tags: ['exam'],
+      audience: { roles: ['STUDENT'] },
+    });
+    const documentId = created.json().data.document.id as string;
+    await pool.query('UPDATE document_metadata SET tags = $2 WHERE document_id = $1', [
+      documentId,
+      JSON.stringify(['exam']),
+    ]);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/documents/${documentId}`,
+      headers: headers(adminToken),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const data = response.json().data;
+    expect(data.title).toBe('Detail Doc');
+    expect(data.status).toBe('DRAFT');
+    expect(data.metadata.tags).toContain('exam');
+    expect(data.metadata.audience).toEqual({ roles: ['STUDENT'] });
+  });
+
+  it('does not leak a draft to a student (404)', async () => {
+    const created = await createDocument(adminToken, { title: 'Draft Not For Students' });
+    const documentId = created.json().data.document.id as string;
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/documents/${documentId}`,
+      headers: headers(studentToken),
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it('allows a published document to be read by a student', async () => {
+    const documentId = await seedPublishedDocument(adminToken, 'Student Visible');
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/documents/${documentId}`,
+      headers: headers(studentToken),
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.status).toBe('PUBLISHED');
+  });
+});
+
+describe('PATCH /api/v1/documents/:id (CRUD)', () => {
+  it('updates title and tags as the creator', async () => {
+    const created = await createDocument(adminToken, { title: 'Original Title' });
+    const documentId = created.json().data.document.id as string;
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/documents/${documentId}`,
+      headers: headers(adminToken),
+      payload: { title: 'Updated Title', tags: ['first', 'second'] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.title).toBe('Updated Title');
+    expect(response.json().data.metadata.tags).toEqual(['first', 'second']);
+  });
+
+  it('rejects editing by a student (403)', async () => {
+    const created = await createDocument(adminToken);
+    const documentId = created.json().data.document.id as string;
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/documents/${documentId}`,
+      headers: headers(studentToken),
+      payload: { title: 'Hacked' },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it('rejects editing someone else draft by a peer department admin (403)', async () => {
+    const deptAdminUser = await seedIdentity(pool);
+    await pool.query(
+      "INSERT INTO institution_memberships (institution_id, user_id, role) VALUES ($1, $2, 'DEPARTMENT_ADMIN')",
+      [institutionId, deptAdminUser.userId],
+    );
+    const deptAdminToken = await login(deptAdminUser);
+
+    const created = await createDocument(adminToken);
+    const documentId = created.json().data.document.id as string;
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/documents/${documentId}`,
+      headers: headers(deptAdminToken),
+      payload: { title: 'Not Mine' },
+    });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it('allows a peer institution admin to edit a draft (manager role)', async () => {
+    const peer = await seedInstitutionWithUsers(pool, ['INSTITUTION_ADMIN']);
+    const peerToken = await login(peer.users[0]!);
+    const created = await createDocument(adminToken);
+    const documentId = created.json().data.document.id as string;
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/documents/${documentId}`,
+      headers: headers(adminToken),
+      payload: { title: 'Edited by peer admin' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().data.title).toBe('Edited by peer admin');
+    void peerToken;
+  });
+
+  it('is not visible across tenants (404)', async () => {
+    const created = await createDocument(adminToken);
+    const documentId = created.json().data.document.id as string;
+
+    const foreign = await seedInstitutionWithUsers(pool, ['INSTITUTION_ADMIN']);
+    const foreignToken = await login(foreign.users[0]!);
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/v1/documents/${documentId}`,
+      headers: {
+        authorization: `Bearer ${foreignToken}`,
+        'x-institution-id': foreign.institutionId,
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 });
