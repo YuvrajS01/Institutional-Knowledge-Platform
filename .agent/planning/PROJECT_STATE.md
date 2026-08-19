@@ -14,32 +14,31 @@ Phase 3 (Document Processing) — in progress.
 
 ## Current Task
 
-**P3-001** (Add job queue abstraction) — implementation complete on task branch `feat/P3-001-job-queue`; PR pending human approval.
+**P3-002** (Implement PDF text extraction adapter) — implementation complete on task branch `feat/P3-002-pdf-extraction`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P3-001-job-queue`
+`feat/P3-002-pdf-extraction`
 
 ## Overall Status
 
-`PHASE_3_IN_PROGRESS` — queue abstraction done; text extraction, OCR, orchestration, metadata/date extraction, chunking pending.
+`PHASE_3_IN_PROGRESS` — queue + text extraction done; OCR, orchestration, metadata/date extraction, chunking pending.
 
 ## Last Completed Task
 
-P3-001 (Add job queue abstraction) — Redis/BullMQ job queue verified end-to-end.
+P3-002 (Implement PDF text extraction adapter) — verified against real generated PDFs.
 
 ## What Is Working
 
-- Everything from Phases 0–2 (merged into `main` via PRs #1–#17).
-- Job queue abstraction (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §20, ADR-002, IMPLEMENTATION_GUIDE §4):
-  - New `@ikp/queue` package: `JobQueue` interface (enqueue/close), stable job payload `{ job_id, institution_id, document_id, version_id, attempt, payload }`, `JOB_NAMES`.
-  - `BullMQJobQueue` (Redis) — deterministic `jobId` dedupe (idempotency), `attempts` + exponential backoff (retry), job-state observability.
-  - `createJobWorker(name, handler)` — worker consumer that validates the tenant-aware payload before invoking the handler.
-  - CI `checks` job now runs a Redis service.
+- Everything from Phases 0–2 + P3-001 (merged into `main` via PRs #1–#18).
+- Text extraction (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §7, ADR-003/007):
+  - New `@ikp/processing` package: `TextExtractor` interface + `PdfTextExtractor` (unpdf/pdf.js — pure JS, local-first, no native deps).
+  - Handles `application/pdf` (per-page text + page count), `text/plain` (direct), other types → `method: 'none'` (signals OCR need).
+  - `isTextAdequate` heuristic (min chars/page) — the native-vs-OCR decision input used by orchestration (P3-004).
 
 ## What Is Not Implemented
 
-- Phase 3 remainder: PDF text extraction (P3-002), OCR adapter (P3-003), processing orchestration (P3-004), metadata extraction interface (P3-005), providers (P3-006/007), chunking (P3-008), retry/status UI (P3-009), scanned-PDF tests (P3-010).
+- Phase 3 remainder: OCR adapter (P3-003), processing orchestration (P3-004), metadata extraction interface (P3-005), providers (P3-006/007), chunking (P3-008), retry/status UI (P3-009), scanned-PDF tests (P3-010).
 - Uploads still report `QUEUED`; no consumer processes them yet.
 - Phases 4–10.
 
@@ -60,10 +59,10 @@ P3-001 (Add job queue abstraction) — Redis/BullMQ job queue verified end-to-en
 
 ## Current Git State
 
-`main` contains merged Phases 0–2. Task branch `feat/P3-001-job-queue` starts Phase 3, all checks green:
+`main` contains merged Phases 0–2 + P3-001. Task branch `feat/P3-002-pdf-extraction` adds text extraction, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests, 8/8)  tests ✅ (138, incl. Redis queue delivery/retry/idempotency)  build ✅ (6/6)  format ✅
+lint ✅  typecheck ✅ (incl. tests, 9/9)  tests ✅ (146, incl. real PDF extraction)  build ✅ (7/7)  format ✅
 ```
 
 ## Model Handoff Instructions
@@ -105,6 +104,7 @@ When switching AI tools/models:
 | Admin document list UI (live walk: submit→approve→publish) | PASS |
 | Upload/review UI (live: form → upload → queued → submit) | PASS |
 | Job queue (Redis: delivery, retry, idempotency) | PASS |
+| PDF text extraction (native + scanned-style) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -112,7 +112,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P3-001 merges, start **P3-002** (Implement PDF text extraction adapter) from updated `main` on branch `feat/P3-002-pdf-extraction`.
+After P3-002 merges, start **P3-003** (Implement OCR adapter) from updated `main` on branch `feat/P3-003-ocr-adapter`.
 
 ## Last Updated
 
