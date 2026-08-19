@@ -75,13 +75,19 @@ describe('parseEnv', () => {
     expect(() => parseEnv(apiEnvSchema)).toThrow(/not allowed in production/);
   });
 
-  it('parses a valid worker environment with optional connections', () => {
+  it('parses a valid worker environment', () => {
     process.env = {
       NODE_ENV: 'test',
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/institutional_knowledge',
+      REDIS_URL: 'redis://localhost:6379',
     };
     const env = parseEnv(workerEnvSchema);
     expect(env.WORKER_PORT).toBe(4100);
-    expect(env.DATABASE_URL).toBeUndefined();
-    expect(env.REDIS_URL).toBeUndefined();
+    expect(env.S3_BUCKET).toBe('institutional-documents');
+  });
+
+  it('requires database and redis for the worker', () => {
+    process.env = { NODE_ENV: 'test' };
+    expect(() => parseEnv(workerEnvSchema)).toThrow(/DATABASE_URL|REDIS_URL/);
   });
 });

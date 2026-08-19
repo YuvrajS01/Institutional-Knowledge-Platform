@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "pnpm -r build",
-    "build:packages": "pnpm --filter @ikp/shared --filter @ikp/config build",
+    "build:packages": "pnpm --filter @ikp/shared --filter @ikp/config --filter @ikp/queue --filter @ikp/processing --filter @ikp/storage build",
     "dev": "pnpm build:packages && pnpm -r --parallel dev",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",

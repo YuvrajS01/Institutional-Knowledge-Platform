@@ -6,6 +6,7 @@ import type { FastifyPreHandler } from '../../common/auth/authorize.js';
 import { AppError } from '../../common/errors.js';
 import type { DbPool } from '../../infrastructure/db/db-pool.js';
 import type { ObjectStorage } from '../../infrastructure/storage/object-storage.js';
+import type { JobQueue } from '@ikp/queue';
 import type { AuditLogService } from '../audit/audit-log.service.js';
 import { DocumentsService } from './documents.service.js';
 
@@ -82,6 +83,7 @@ export interface DocumentsModuleOptions {
   pool: DbPool;
   storage: ObjectStorage;
   audit: AuditLogService;
+  queue?: JobQueue;
   authorization: {
     guard: (capability: Capability) => FastifyPreHandler[];
     requireMember: FastifyPreHandler[];
@@ -100,7 +102,7 @@ export async function registerDocumentsRoutes(
   app: FastifyInstance,
   options: DocumentsModuleOptions,
 ): Promise<void> {
-  const service = new DocumentsService(options.pool, options.storage, options.audit);
+  const service = new DocumentsService(options.pool, options.storage, options.audit, options.queue);
 
   app.post(
     '/documents',

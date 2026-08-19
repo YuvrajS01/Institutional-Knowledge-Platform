@@ -13,6 +13,7 @@ import {
   type AuditAction,
   type Role,
 } from '@ikp/shared';
+import type { JobQueue } from '@ikp/queue';
 
 import { AppError } from '../../common/errors.js';
 import type { DbPool } from '../../infrastructure/db/db-pool.js';
@@ -179,6 +180,7 @@ export class DocumentsService {
     private readonly pool: DbPool,
     private readonly storage: ObjectStorage,
     private readonly audit: AuditLogService,
+    private readonly queue?: JobQueue,
   ) {
     this.documents = new DocumentsRepository(pool);
     this.metadata = new DocumentMetadataRepository(pool);
@@ -335,6 +337,16 @@ export class DocumentsService {
         sha256: version.sha256,
       },
     });
+
+    if (this.queue) {
+      await this.queue.enqueue({
+        name: 'document.process',
+        jobId: `${documentId}-v${version.version_number}-document.process`,
+        institutionId: actor.institutionId,
+        documentId,
+        versionId: version.id,
+      });
+    }
 
     return { document_id: documentId, processing_status: 'QUEUED' };
   }

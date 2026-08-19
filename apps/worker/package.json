@@ -11,12 +11,21 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/s3-request-presigner": "^3.600.0",
     "@ikp/config": "workspace:*",
+    "@ikp/processing": "workspace:*",
+    "@ikp/queue": "workspace:*",
     "@ikp/shared": "workspace:*",
+    "@ikp/storage": "workspace:*",
+    "pg": "^8.13.0",
     "pino": "^9.5.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "pdf-lib": "^1.17.1",
+    "sharp": "^0.34.5",
     "tsx": "^4.19.0",
     "typescript": "^5.5.0"
   }

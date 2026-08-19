@@ -1,4 +1,5 @@
 import { apiEnvSchema, loadEnvFile, parseEnv } from '@ikp/config';
+import { BullMQJobQueue } from '@ikp/queue';
 import pino from 'pino';
 
 import { buildApp } from './app.js';
@@ -21,6 +22,7 @@ async function main(): Promise<void> {
     accessKeyId: env.S3_ACCESS_KEY,
     secretAccessKey: env.S3_SECRET_KEY,
   });
+  const queue = new BullMQJobQueue({ connectionUrl: env.REDIS_URL, prefix: 'ikp' });
 
   const app = await buildApp({
     logger: false,
@@ -38,6 +40,7 @@ async function main(): Promise<void> {
     },
     pool,
     storage,
+    queue,
     auth: {
       pool,
       tokenConfig: {
