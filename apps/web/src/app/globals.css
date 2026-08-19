@@ -109,6 +109,34 @@ a {
   color: #ffffff;
 }
 
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.section-head h2 {
+  margin: 0;
+}
+
+a.button {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background: var(--accent);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.secondary-link {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.375rem;
+  text-decoration: none;
+}
+
 .pagination {
   display: flex;
   align-items: center;

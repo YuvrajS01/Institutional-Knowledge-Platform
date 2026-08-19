@@ -8,37 +8,39 @@
 
 Phase 2 (Document Core) — in progress.
 
+## Current Phase
+
+Phase 2 (Document Core) — complete on task branch `feat/P2-008-upload-review-ui`; awaiting PR approval and merge.
+
 ## Current Task
 
-**P2-007** (Build admin document list) — implementation complete on task branch `feat/P2-007-admin-document-list`; PR pending human approval.
+**P2-008** (Build upload/review UI shell) — implementation complete on task branch `feat/P2-008-upload-review-ui`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P2-007-admin-document-list`
+`feat/P2-008-upload-review-ui`
 
 ## Overall Status
 
-`PHASE_2_IN_PROGRESS` — schema, storage, upload, CRUD, lifecycle, audit, admin document list done; upload/review UI pending.
+`PHASE_2_COMPLETE` — the document core (schema, storage, signed upload, CRUD, lifecycle, audit, admin list + upload UI) is delivered. Next: Phase 3 (Processing).
 
 ## Last Completed Task
 
-P2-007 (Build admin document list) — admin documents page with filters, pagination, and lifecycle actions.
+P2-008 (Build upload/review UI shell) — closes out Phase 2.
 
 ## What Is Working
 
-- Everything from Phases 0–1 + P2-001..P2-006 (merged into `main` via PRs #1–#15).
-- Admin document list UI (this PR, per `.agent/design/UI_UX_DESIGN.md` §15/§18):
-  - `/admin` restructured with a shared nav layout (Overview, Documents) + sign out.
-  - `/admin/documents`: searchable, status-filtered, paginated table (Title/Type/Department/Status/Published) with status badges.
-  - Lifecycle actions in the UI: Submit (draft) → Approve (in review, `document.approve`) → Publish (approved, `document.publish`) → Archive (published); buttons gated by `ROLE_CAPABILITIES`.
-  - `lib/api` gained `apiEnvelopeRequest` (data + meta) for paginated endpoints.
+- Everything from Phases 0–1 + P2-001..P2-007 (merged into `main` via PRs #1–#16).
+- Upload/review UI shell (this PR, per `.agent/design/UI_UX_DESIGN.md` §16):
+  - `/admin/documents/upload`: metadata form (title, type, tags) + file picker → `POST /documents` → presigned PUT → `upload-complete` → "Processing queued" state (the P3-009 processing-status placeholder).
+  - Post-upload actions: Submit for review / Approve / Publish (capability-gated).
+  - "Upload document" button on the documents list + "Upload" nav item; client-side file type + size validation (mirrors the server allowlist/25 MB).
 
 ## What Is Not Implemented
 
-- Phase 2 remainder: upload/review UI (P2-008).
-- Document detail page, summary, dates, bookmarks (Phase 6).
-- Audit-log UI (backlogged).
-- Phases 3–10.
+- Phase 3 (Processing): queue, text extraction, OCR, metadata/date extraction, chunking, processing-status UI.
+- Real extracted-metadata review (P3) and document detail/summary/dates (Phase 6).
+- Phases 4–10.
 
 ## Active Blockers
 
@@ -57,10 +59,10 @@ P2-007 (Build admin document list) — admin documents page with filters, pagina
 
 ## Current Git State
 
-`main` contains merged Phases 0–1 + P2-001..P2-006. Task branch `feat/P2-007-admin-document-list` adds the admin documents UI, all checks green:
+`main` contains merged Phases 0–2 (PRs #1–#16). Task branch `feat/P2-008-upload-review-ui` completes Phase 2, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (132)  build ✅ (6/6 incl. web)  format ✅  live admin flow ✅ (list → submit → approve → publish)
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (132)  build ✅ (6/6, 8 prerendered pages)  format ✅  live upload walk ✅ (form → presigned PUT → queued → submit → IN_REVIEW → listed)
 ```
 
 ## Model Handoff Instructions
@@ -100,6 +102,7 @@ When switching AI tools/models:
 | Document lifecycle (full walk + guards) | PASS |
 | Audit trail (lifecycle events + admin API, tenant-scoped) | PASS |
 | Admin document list UI (live walk: submit→approve→publish) | PASS |
+| Upload/review UI (live: form → upload → queued → submit) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -107,7 +110,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P2-007 merges, start **P2-008** (Build upload/review UI shell) from updated `main` on branch `feat/P2-008-upload-review-ui` — closes Phase 2.
+After P2-008 merges, start **Phase 3 — Processing**: **P3-001** (Add job queue abstraction) from updated `main` on branch `feat/P3-001-job-queue`.
 
 ## Last Updated
 

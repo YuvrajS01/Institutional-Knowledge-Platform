@@ -55,7 +55,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P2-005 | P0 | DONE | Implement lifecycle state machine | P2-004 |
 | P2-006 | P0 | DONE | Implement audit logging | P2-004 |
 | P2-007 | P1 | DONE | Build admin document list | P2-004,P1-008 |
-| P2-008 | P1 | TODO | Build upload/review UI shell | P2-003 |
+| P2-008 | P1 | DONE | Build upload/review UI shell | P2-003 |
 
 ## Phase 3 — Processing
 
