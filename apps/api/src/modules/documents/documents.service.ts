@@ -6,12 +6,19 @@ import type {
   DocumentType,
   UploadCompleteResponse,
 } from '@ikp/shared';
-import { canTransitionDocument, ERROR_CODES, hasCapability, type Role } from '@ikp/shared';
+import {
+  canTransitionDocument,
+  ERROR_CODES,
+  hasCapability,
+  type AuditAction,
+  type Role,
+} from '@ikp/shared';
 
 import { AppError } from '../../common/errors.js';
 import type { DbPool } from '../../infrastructure/db/db-pool.js';
 import type { ObjectStorage } from '../../infrastructure/storage/object-storage.js';
 import { originalFileKey } from '../../infrastructure/storage/storage-keys.js';
+import type { AuditLogService } from '../audit/audit-log.service.js';
 import { DocumentMetadataRepository } from './document-metadata.repository.js';
 import { DocumentVersionsRepository } from './document-versions.repository.js';
 import { DocumentsRepository } from './documents.repository.js';
@@ -125,6 +132,23 @@ function isDocumentManager(role: string): boolean {
   return role === 'APPROVER' || role === 'INSTITUTION_ADMIN' || role === 'PLATFORM_ADMIN';
 }
 
+function transitionAuditAction(toStatus: DocumentStatus): AuditAction {
+  switch (toStatus) {
+    case 'IN_REVIEW':
+      return 'document.submitted_for_review';
+    case 'APPROVED':
+      return 'document.approved';
+    case 'PUBLISHED':
+      return 'document.published';
+    case 'ARCHIVED':
+      return 'document.archived';
+    case 'SUPERSEDED':
+      return 'document.superseded';
+    case 'DRAFT':
+      return 'document.returned_to_draft';
+  }
+}
+
 interface TransitionRule {
   capability: 'document.edit_draft' | 'document.approve' | 'document.publish';
   creatorOnly?: boolean;
@@ -154,6 +178,7 @@ export class DocumentsService {
   constructor(
     private readonly pool: DbPool,
     private readonly storage: ObjectStorage,
+    private readonly audit: AuditLogService,
   ) {
     this.documents = new DocumentsRepository(pool);
     this.metadata = new DocumentMetadataRepository(pool);
@@ -198,6 +223,13 @@ export class DocumentsService {
     });
 
     const uploadUrl = await this.storage.presignPut(storageKey, input.mime_type, 15 * 60);
+
+    await this.audit.record(actor, {
+      action: 'document.created',
+      entityType: 'document',
+      entityId: document.id,
+      metadata: { title: document.title, document_type: document.document_type },
+    });
 
     return {
       document: { id: document.id, status: document.status, title: document.title },
@@ -291,6 +323,18 @@ export class DocumentsService {
       created_by: actor.userId,
     });
     await this.documents.setCurrentVersion(actor.institutionId, documentId, version.id);
+
+    await this.audit.record(actor, {
+      action: 'document.uploaded',
+      entityType: 'document',
+      entityId: documentId,
+      metadata: {
+        version: version.version_number,
+        mime_type: version.mime_type,
+        size_bytes: version.size_bytes,
+        sha256: version.sha256,
+      },
+    });
 
     return { document_id: documentId, processing_status: 'QUEUED' };
   }
@@ -425,6 +469,16 @@ export class DocumentsService {
       });
     }
 
+    const changed = Object.entries(input)
+      .filter(([, value]) => value !== undefined)
+      .map(([key]) => key);
+    await this.audit.record(actor, {
+      action: 'document.updated',
+      entityType: 'document',
+      entityId: documentId,
+      metadata: { fields: changed },
+    });
+
     return this.get(actor, documentId);
   }
 
@@ -480,6 +534,13 @@ export class DocumentsService {
 
     await this.documents.updateStatus(actor.institutionId, documentId, toStatus, {
       published_at: toStatus === 'PUBLISHED' ? new Date() : undefined,
+    });
+
+    await this.audit.record(actor, {
+      action: transitionAuditAction(toStatus),
+      entityType: 'document',
+      entityId: documentId,
+      metadata: { from: document.status, to: toStatus },
     });
 
     return this.get(actor, documentId);

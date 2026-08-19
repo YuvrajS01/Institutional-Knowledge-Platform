@@ -6,6 +6,7 @@ import type { FastifyPreHandler } from '../../common/auth/authorize.js';
 import { AppError } from '../../common/errors.js';
 import type { DbPool } from '../../infrastructure/db/db-pool.js';
 import type { ObjectStorage } from '../../infrastructure/storage/object-storage.js';
+import type { AuditLogService } from '../audit/audit-log.service.js';
 import { DocumentsService } from './documents.service.js';
 
 const createSchema = z.object({
@@ -80,6 +81,7 @@ const WRITE_RATE_LIMIT = { max: 30, timeWindow: '1 minute' } as const;
 export interface DocumentsModuleOptions {
   pool: DbPool;
   storage: ObjectStorage;
+  audit: AuditLogService;
   authorization: {
     guard: (capability: Capability) => FastifyPreHandler[];
     requireMember: FastifyPreHandler[];
@@ -98,7 +100,7 @@ export async function registerDocumentsRoutes(
   app: FastifyInstance,
   options: DocumentsModuleOptions,
 ): Promise<void> {
-  const service = new DocumentsService(options.pool, options.storage);
+  const service = new DocumentsService(options.pool, options.storage, options.audit);
 
   app.post(
     '/documents',
