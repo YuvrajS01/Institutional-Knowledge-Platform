@@ -14,38 +14,36 @@ Phase 3 (Document Processing) — in progress.
 
 ## Current Task
 
-**P3-003** (Implement OCR adapter) — implementation complete on task branch `feat/P3-003-ocr-adapter`; PR pending human approval.
+**P3-004** (Implement processing orchestration) — implementation complete on task branch `feat/P3-004-processing-orchestration`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P3-003-ocr-adapter`
+`feat/P3-004-processing-orchestration`
 
 ## Overall Status
 
-`PHASE_3_IN_PROGRESS` — queue, text extraction, OCR done; orchestration, metadata/date extraction, chunking pending.
+`PHASE_3_IN_PROGRESS` — queue, extraction, OCR, and orchestration done; metadata/date extraction and chunking pending. **Uploads now actually process.**
 
 ## Last Completed Task
 
-P3-003 (Implement OCR adapter) — tesseract.js image OCR verified on generated images.
+P3-004 (Implement processing orchestration) — verified live: upload → enqueue → worker extracts text → COMPLETED.
 
 ## What Is Working
 
-- Everything from Phases 0–2 + P3-001/P3-002 (merged into `main` via PRs #1–#19).
-- OCR adapter (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §2, ADR-003/007):
-  - `OCRProvider` interface (`name`, `extract(buffer, mimeType, language?) → { text, confidence, provider, pages }`).
-  - `TesseractOcrProvider` — tesseract.js (wasm, no native deps, local-first); handles png/jpeg/webp/bmp; rejects non-image inputs; worker script resolved via `createRequire` (ESM-safe).
-  - Verified end-to-end: a text image rendered from SVG via sharp → OCR recovers "EXAM FORM DEADLINE 18 AUGUST 2026" with confidence > 0.
+- Everything from Phases 0–2 + P3-001..P3-003 (merged into `main` via PRs #1–#20).
+- Processing orchestration (this PR):
+  - **Worker pipeline**: `document.process` job → tenant-scoped version lookup → download original → text extraction → OCR when inadequate (raster images OCR'd now; scanned PDFs marked `REQUIRED`, rasterization backlogged) → persist `extracted_text`/`ocr_status`/`page_count`/`processing_status` → write `extracted.txt` artifact.
+  - Idempotent (completed versions skipped), tenant-aware, retryable (BullMQ attempts/backoff), observable (`processing_status` column + worker logs).
+  - **API enqueue**: `upload-complete` now enqueues `document.process` (deterministic jobId → no duplicates).
+  - `processing_status` column added to `document_versions` (QUEUED→PROCESSING→COMPLETED/FAILED).
+  - **`packages/storage`** extracted (shared ObjectStorage interface + S3 adapter + storage keys) — used by both API and worker (no duplication).
+  - Worker env now requires DATABASE_URL/REDIS_URL/S3_*.
 
 ## What Is Not Implemented
 
-- Phase 3 remainder: processing orchestration (P3-004), metadata extraction interface (P3-005), providers (P3-006/007), chunking (P3-008), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
-- PDF page rasterization (needed for scanned-PDF OCR) is pending — the native `node-canvas` path conflicts with pnpm's script policy; noted in `docs/BACKLOG.md` for P3-010.
-- Uploads still report `QUEUED`; no consumer processes them yet.
+- Phase 3 remainder: metadata extraction interface (P3-005), providers (P3-006/007), chunking (P3-008), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
+- PDF page rasterization for scanned-PDF OCR (backlogged).
 - Phases 4–10.
-
-## Environment Note
-
-Local Docker-dependent suites (Redis queue, MinIO storage, documents/audit routes) could not be re-run after the Docker daemon stopped (sudo requires a password). They were green in prior full runs (146 tests) and CI re-verifies them on every PR; 100 non-Docker tests pass locally now.
 
 ## Active Blockers
 
@@ -64,10 +62,10 @@ Local Docker-dependent suites (Redis queue, MinIO storage, documents/audit route
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P3-001. Task branch `feat/P3-002-pdf-extraction` adds text extraction, all checks green:
+`main` contains merged Phases 0–2 + P3-001..P3-003. Task branch `feat/P3-004-processing-orchestration` adds the processing pipeline, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests, 9/9)  tests ✅ (146, incl. real PDF extraction)  build ✅ (7/7)  format ✅
+lint ✅  typecheck ✅ (incl. tests, 13/13)  tests ✅ (156, incl. processing pipeline)  build ✅ (8/8)  format ✅  live loop ✅ (upload → enqueue → worker → COMPLETED + extracted_text)
 ```
 
 ## Model Handoff Instructions
@@ -110,6 +108,7 @@ When switching AI tools/models:
 | Upload/review UI (live: form → upload → queued → submit) | PASS |
 | Job queue (Redis: delivery, retry, idempotency) | PASS |
 | PDF text extraction (native + scanned-style) | PASS |
+| Processing pipeline (live: upload → enqueue → extract → COMPLETED) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -117,7 +116,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P3-002 merges, start **P3-003** (Implement OCR adapter) from updated `main` on branch `feat/P3-003-ocr-adapter`.
+After P3-004 merges, start **P3-005** (Implement metadata extraction interface) from updated `main` on branch `feat/P3-005-metadata-interface`.
 
 ## Last Updated
 
