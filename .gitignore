@@ -16,7 +16,7 @@ out/
 
 # Logs
 *.log
-logs/
+/logs/
 
 # Test output
 coverage/
@@ -24,22 +24,22 @@ coverage/
 # Local caches/runtime
 .cache/
 .tmp/
-runtime/
+/runtime/
 
 # IDE / OS
 .idea/
 .DS_Store
 Thumbs.db
 
-# Local databases and user/runtime data
+# Local databases and user/runtime data (repo root only)
 *.sqlite
 *.sqlite3
-uploads/
-storage/
-data/
+/uploads/
+/storage/
+/data/
 
 # AI/model caches
-models/
+/models/
 model-cache/
 huggingface-cache/
 ollama-data/
