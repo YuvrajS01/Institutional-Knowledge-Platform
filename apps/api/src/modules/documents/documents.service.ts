@@ -6,7 +6,7 @@ import type {
   DocumentType,
   UploadCompleteResponse,
 } from '@ikp/shared';
-import { ERROR_CODES } from '@ikp/shared';
+import { canTransitionDocument, ERROR_CODES, hasCapability, type Role } from '@ikp/shared';
 
 import { AppError } from '../../common/errors.js';
 import type { DbPool } from '../../infrastructure/db/db-pool.js';
@@ -124,6 +124,27 @@ function visibleStatusesForRole(role: string): DocumentStatus[] | undefined {
 function isDocumentManager(role: string): boolean {
   return role === 'APPROVER' || role === 'INSTITUTION_ADMIN' || role === 'PLATFORM_ADMIN';
 }
+
+interface TransitionRule {
+  capability: 'document.edit_draft' | 'document.approve' | 'document.publish';
+  creatorOnly?: boolean;
+}
+
+/**
+ * Authorization per transition. "Optional" capabilities in the API
+ * authorization matrix default to the stricter interpretation.
+ */
+const TRANSITION_RULES: Record<string, TransitionRule> = {
+  'DRAFT->IN_REVIEW': { capability: 'document.edit_draft', creatorOnly: true },
+  'DRAFT->ARCHIVED': { capability: 'document.edit_draft' },
+  'IN_REVIEW->APPROVED': { capability: 'document.approve' },
+  'IN_REVIEW->DRAFT': { capability: 'document.approve' },
+  'APPROVED->PUBLISHED': { capability: 'document.publish' },
+  'APPROVED->DRAFT': { capability: 'document.approve' },
+  'PUBLISHED->SUPERSEDED': { capability: 'document.publish' },
+  'PUBLISHED->ARCHIVED': { capability: 'document.publish' },
+  'SUPERSEDED->ARCHIVED': { capability: 'document.publish' },
+};
 
 export class DocumentsService {
   private readonly documents: DocumentsRepository;
@@ -403,6 +424,63 @@ export class DocumentsService {
         audience: input.audience,
       });
     }
+
+    return this.get(actor, documentId);
+  }
+
+  /**
+   * Applies a lifecycle transition with per-transition authorization.
+   * Throws 409 for invalid transitions, 403 for insufficient rights, and
+   * 409 when submitting a document that has no content yet.
+   */
+  async transition(
+    actor: UploadActor,
+    documentId: string,
+    toStatus: DocumentStatus,
+  ): Promise<DocumentDetailView | null> {
+    const document = await this.documents.findById(actor.institutionId, documentId);
+    if (!document) {
+      return null;
+    }
+
+    if (!canTransitionDocument(document.status, toStatus)) {
+      throw new AppError(
+        ERROR_CODES.CONFLICT,
+        `Cannot transition a document from ${document.status} to ${toStatus}.`,
+        409,
+        { from: document.status, to: toStatus },
+      );
+    }
+
+    const rule = TRANSITION_RULES[`${document.status}->${toStatus}`];
+    if (!rule) {
+      throw new AppError(
+        ERROR_CODES.CONFLICT,
+        `Transition ${document.status} -> ${toStatus} is not permitted.`,
+        409,
+        { from: document.status, to: toStatus },
+      );
+    }
+
+    if (rule.creatorOnly && document.created_by !== actor.userId) {
+      throw AppError.forbidden('Only the creator can perform this action.');
+    }
+    if (!hasCapability(actor.role as Role, rule.capability)) {
+      throw AppError.forbidden();
+    }
+
+    if (toStatus === 'IN_REVIEW' && !document.current_version_id) {
+      throw new AppError(
+        ERROR_CODES.CONFLICT,
+        'A document must have content before it can be submitted for review.',
+        409,
+        {},
+      );
+    }
+
+    await this.documents.updateStatus(actor.institutionId, documentId, toStatus, {
+      published_at: toStatus === 'PUBLISHED' ? new Date() : undefined,
+    });
 
     return this.get(actor, documentId);
   }

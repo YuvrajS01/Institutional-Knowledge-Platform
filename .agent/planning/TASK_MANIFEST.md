@@ -52,7 +52,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P2-002 | P0 | DONE | Add object storage abstraction | P0-004 |
 | P2-003 | P0 | DONE | Implement signed upload flow | P2-001,P2-002 |
 | P2-004 | P0 | DONE | Implement document CRUD service | P2-001 |
-| P2-005 | P0 | TODO | Implement lifecycle state machine | P2-004 |
+| P2-005 | P0 | DONE | Implement lifecycle state machine | P2-004 |
 | P2-006 | P0 | TODO | Implement audit logging | P2-004 |
 | P2-007 | P1 | TODO | Build admin document list | P2-004,P1-008 |
 | P2-008 | P1 | TODO | Build upload/review UI shell | P2-003 |
