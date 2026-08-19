@@ -16,9 +16,11 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "tesseract.js": "^5",
     "unpdf": "^1.8.1"
   },
   "devDependencies": {
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "sharp": "^0.34.5"
   }
 }

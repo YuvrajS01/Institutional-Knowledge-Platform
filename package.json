@@ -37,6 +37,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "canvas",
       "esbuild",
       "next",
       "sharp"

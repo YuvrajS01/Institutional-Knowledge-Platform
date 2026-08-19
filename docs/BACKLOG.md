@@ -11,6 +11,10 @@ Ideas that are useful but intentionally deferred. Revisit after MVP validation; 
 - Refresh-token rotation wired into the web client (client stores tokens in localStorage today).
 - `minio-init` style bucket provisioning documented as an operational step for non-Docker deployments.
 
+## Processing
+
+- PDF page rasterization for scanned-PDF OCR (the native `node-canvas` path conflicts with pnpm's blocked build-script policy; revisit with a prebuilt-friendly option or a rendering service before P3-010).
+
 ## Documents
 
 - Department-scope editing: restrict department admins to their department's documents.
