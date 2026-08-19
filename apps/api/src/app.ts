@@ -15,6 +15,8 @@ import { registerAuthRoutes, type AuthModuleOptions } from './modules/auth/auth.
 import { registerDepartmentsRoutes } from './modules/departments/departments.route.js';
 import { registerInstitutionsRoutes } from './modules/institutions/institutions.route.js';
 import { registerDocumentsRoutes } from './modules/documents/documents.route.js';
+import { registerAuditRoutes } from './modules/audit/audit.route.js';
+import { AuditLogService } from './modules/audit/audit-log.service.js';
 
 export interface AppOptions {
   logger?: FastifyServerOptions['logger'];
@@ -54,6 +56,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
       jwtSecret: options.auth.tokenConfig.secret,
       pool: options.pool,
     });
+    const audit = new AuditLogService(options.pool);
 
     await app.register(
       async (v1) => {
@@ -68,9 +71,11 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
           await registerDocumentsRoutes(v1, {
             pool: options.pool!,
             storage: options.storage,
+            audit,
             authorization,
           });
         }
+        await registerAuditRoutes(v1, { pool: options.pool!, authorization });
       },
       { prefix: '/api/v1' },
     );
