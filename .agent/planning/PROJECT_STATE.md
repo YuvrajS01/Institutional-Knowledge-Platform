@@ -14,33 +14,38 @@ Phase 3 (Document Processing) — in progress.
 
 ## Current Task
 
-**P3-002** (Implement PDF text extraction adapter) — implementation complete on task branch `feat/P3-002-pdf-extraction`; PR pending human approval.
+**P3-003** (Implement OCR adapter) — implementation complete on task branch `feat/P3-003-ocr-adapter`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P3-002-pdf-extraction`
+`feat/P3-003-ocr-adapter`
 
 ## Overall Status
 
-`PHASE_3_IN_PROGRESS` — queue + text extraction done; OCR, orchestration, metadata/date extraction, chunking pending.
+`PHASE_3_IN_PROGRESS` — queue, text extraction, OCR done; orchestration, metadata/date extraction, chunking pending.
 
 ## Last Completed Task
 
-P3-002 (Implement PDF text extraction adapter) — verified against real generated PDFs.
+P3-003 (Implement OCR adapter) — tesseract.js image OCR verified on generated images.
 
 ## What Is Working
 
-- Everything from Phases 0–2 + P3-001 (merged into `main` via PRs #1–#18).
-- Text extraction (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §7, ADR-003/007):
-  - New `@ikp/processing` package: `TextExtractor` interface + `PdfTextExtractor` (unpdf/pdf.js — pure JS, local-first, no native deps).
-  - Handles `application/pdf` (per-page text + page count), `text/plain` (direct), other types → `method: 'none'` (signals OCR need).
-  - `isTextAdequate` heuristic (min chars/page) — the native-vs-OCR decision input used by orchestration (P3-004).
+- Everything from Phases 0–2 + P3-001/P3-002 (merged into `main` via PRs #1–#19).
+- OCR adapter (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §2, ADR-003/007):
+  - `OCRProvider` interface (`name`, `extract(buffer, mimeType, language?) → { text, confidence, provider, pages }`).
+  - `TesseractOcrProvider` — tesseract.js (wasm, no native deps, local-first); handles png/jpeg/webp/bmp; rejects non-image inputs; worker script resolved via `createRequire` (ESM-safe).
+  - Verified end-to-end: a text image rendered from SVG via sharp → OCR recovers "EXAM FORM DEADLINE 18 AUGUST 2026" with confidence > 0.
 
 ## What Is Not Implemented
 
-- Phase 3 remainder: OCR adapter (P3-003), processing orchestration (P3-004), metadata extraction interface (P3-005), providers (P3-006/007), chunking (P3-008), retry/status UI (P3-009), scanned-PDF tests (P3-010).
+- Phase 3 remainder: processing orchestration (P3-004), metadata extraction interface (P3-005), providers (P3-006/007), chunking (P3-008), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
+- PDF page rasterization (needed for scanned-PDF OCR) is pending — the native `node-canvas` path conflicts with pnpm's script policy; noted in `docs/BACKLOG.md` for P3-010.
 - Uploads still report `QUEUED`; no consumer processes them yet.
 - Phases 4–10.
+
+## Environment Note
+
+Local Docker-dependent suites (Redis queue, MinIO storage, documents/audit routes) could not be re-run after the Docker daemon stopped (sudo requires a password). They were green in prior full runs (146 tests) and CI re-verifies them on every PR; 100 non-Docker tests pass locally now.
 
 ## Active Blockers
 

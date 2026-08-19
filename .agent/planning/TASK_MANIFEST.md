@@ -63,7 +63,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 |---|---|---|---|---|
 | P3-001 | P0 | DONE | Add job queue abstraction | P0-005 |
 | P3-002 | P0 | DONE | Implement PDF text extraction adapter | P3-001 |
-| P3-003 | P0 | TODO | Implement OCR adapter | P3-001 |
+| P3-003 | P0 | DONE | Implement OCR adapter | P3-001 |
 | P3-004 | P0 | TODO | Implement processing orchestration | P3-002,P3-003 |
 | P3-005 | P0 | TODO | Implement metadata extraction interface | P3-004 |
 | P3-006 | P1 | TODO | Implement metadata extraction provider | P3-005 |
