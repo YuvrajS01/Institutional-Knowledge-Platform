@@ -10,32 +10,33 @@ Phase 2 (Document Core) — in progress.
 
 ## Current Task
 
-**P2-005** (Implement lifecycle state machine) — implementation complete on task branch `feat/P2-005-lifecycle`; PR pending human approval.
+**P2-006** (Implement audit logging) — implementation complete on task branch `feat/P2-006-audit-logging`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P2-005-lifecycle`
+`feat/P2-006-audit-logging`
 
 ## Overall Status
 
-`PHASE_2_IN_PROGRESS` — schema, storage, upload, CRUD, lifecycle done; audit + admin/upload UI pending.
+`PHASE_2_IN_PROGRESS` — schema, storage, upload, CRUD, lifecycle, audit done; admin/upload UI pending.
 
 ## Last Completed Task
 
-P2-005 (Implement lifecycle state machine) — full DRAFT→IN_REVIEW→APPROVED→PUBLISHED→SUPERSEDED→ARCHIVED machine with per-transition authorization.
+P2-006 (Implement audit logging) — append-only audit trail for document events + admin read API.
 
 ## What Is Working
 
-- Everything from Phases 0–1 + P2-001..P2-004 (merged into `main` via PRs #1–#13).
-- Lifecycle (this PR):
-  - Pure transition model in `@ikp/shared` (`DOCUMENT_TRANSITIONS`, `canTransitionDocument`, labels) — DRAFT→[IN_REVIEW, ARCHIVED], IN_REVIEW→[APPROVED, DRAFT], APPROVED→[PUBLISHED, DRAFT], PUBLISHED→[SUPERSEDED, ARCHIVED], SUPERSEDED→[ARCHIVED], ARCHIVED terminal.
-  - `POST /documents/:id/{submit-review|approve|publish|archive}` — per-transition capability + creator rules; invalid transitions → 409; submitting a contentless draft → 409; `published_at` set on publish; ARCHIVED is terminal.
-  - Supersede transition (PUBLISHED→SUPERSEDED) exists in the machine; its dedicated endpoint arrives with P4-003.
+- Everything from Phases 0–1 + P2-001..P2-005 (merged into `main` via PRs #1–#14).
+- Audit logging (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §5 and `.agent/api/API_SPEC_SHEET.md` §14):
+  - `audit_logs` table (institution + actor FKs, action, entity_type/entity_id, metadata JSONB, UTC created_at; append-only).
+  - `AuditLogService`/`AuditLogRepository` (tenant-scoped) — records `document.created`, `document.uploaded`, `document.updated`, and lifecycle transitions (`submitted_for_review`, `returned_to_draft`, `approved`, `published`, `archived`, `superseded`) with `{ from, to }`.
+  - `GET /api/v1/admin/audit-logs` (`audit.read`, APPROVER+): filters — actor_id, action, entity_type, from, to, page, limit; paginated with total.
+  - `docs/BACKLOG.md` created (deferred ideas per AGENTS.md §19).
 
 ## What Is Not Implemented
 
-- Phase 2 remainder: audit logging (P2-006), admin document list UI (P2-007), upload/review UI (P2-008).
-- Supersede endpoint + version history (Phase 4); approval queue UI (P4-004).
+- Phase 2 remainder: admin document list UI (P2-007), upload/review UI (P2-008).
+- Audit coverage for institution/department admin actions (backlogged).
 - Phases 3–10.
 
 ## Active Blockers
@@ -55,10 +56,10 @@ P2-005 (Implement lifecycle state machine) — full DRAFT→IN_REVIEW→APPROVED
 
 ## Current Git State
 
-`main` contains merged Phases 0–1 + P2-001..P2-004. Task branch `feat/P2-005-lifecycle` adds the state machine, all checks green:
+`main` contains merged Phases 0–1 + P2-001..P2-005. Task branch `feat/P2-006-audit-logging` adds audit logging, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (127, incl. full lifecycle walk)  build ✅ (5/5)  format ✅
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (132, incl. audit trail)  build ✅ (5/5)  format ✅
 ```
 
 ## Model Handoff Instructions
@@ -84,7 +85,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (127) |
+| Unit/integration tests | PASS (132) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -96,6 +97,7 @@ When switching AI tools/models:
 | Signed upload flow (create → presigned PUT → confirm, sha256) | PASS |
 | Document CRUD + visibility (draft hidden from students) | PASS |
 | Document lifecycle (full walk + guards) | PASS |
+| Audit trail (lifecycle events + admin API, tenant-scoped) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -103,7 +105,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P2-005 merges, start **P2-006** (Implement audit logging) from updated `main` on branch `feat/P2-006-audit-logging`.
+After P2-006 merges, start **P2-007** (Build admin document list) from updated `main` on branch `feat/P2-007-admin-document-list`.
 
 ## Last Updated
 
