@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "tesseract.js": "^5",
-    "unpdf": "^1.8.1"
+    "unpdf": "^1.8.1",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "pdf-lib": "^1.17.1",
