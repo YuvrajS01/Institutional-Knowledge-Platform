@@ -10,33 +10,34 @@ Phase 2 (Document Core) — in progress.
 
 ## Current Task
 
-**P2-006** (Implement audit logging) — implementation complete on task branch `feat/P2-006-audit-logging`; PR pending human approval.
+**P2-007** (Build admin document list) — implementation complete on task branch `feat/P2-007-admin-document-list`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P2-006-audit-logging`
+`feat/P2-007-admin-document-list`
 
 ## Overall Status
 
-`PHASE_2_IN_PROGRESS` — schema, storage, upload, CRUD, lifecycle, audit done; admin/upload UI pending.
+`PHASE_2_IN_PROGRESS` — schema, storage, upload, CRUD, lifecycle, audit, admin document list done; upload/review UI pending.
 
 ## Last Completed Task
 
-P2-006 (Implement audit logging) — append-only audit trail for document events + admin read API.
+P2-007 (Build admin document list) — admin documents page with filters, pagination, and lifecycle actions.
 
 ## What Is Working
 
-- Everything from Phases 0–1 + P2-001..P2-005 (merged into `main` via PRs #1–#14).
-- Audit logging (this PR, per `.agent/architecture/TECHNICAL_SPEC.md` §5 and `.agent/api/API_SPEC_SHEET.md` §14):
-  - `audit_logs` table (institution + actor FKs, action, entity_type/entity_id, metadata JSONB, UTC created_at; append-only).
-  - `AuditLogService`/`AuditLogRepository` (tenant-scoped) — records `document.created`, `document.uploaded`, `document.updated`, and lifecycle transitions (`submitted_for_review`, `returned_to_draft`, `approved`, `published`, `archived`, `superseded`) with `{ from, to }`.
-  - `GET /api/v1/admin/audit-logs` (`audit.read`, APPROVER+): filters — actor_id, action, entity_type, from, to, page, limit; paginated with total.
-  - `docs/BACKLOG.md` created (deferred ideas per AGENTS.md §19).
+- Everything from Phases 0–1 + P2-001..P2-006 (merged into `main` via PRs #1–#15).
+- Admin document list UI (this PR, per `.agent/design/UI_UX_DESIGN.md` §15/§18):
+  - `/admin` restructured with a shared nav layout (Overview, Documents) + sign out.
+  - `/admin/documents`: searchable, status-filtered, paginated table (Title/Type/Department/Status/Published) with status badges.
+  - Lifecycle actions in the UI: Submit (draft) → Approve (in review, `document.approve`) → Publish (approved, `document.publish`) → Archive (published); buttons gated by `ROLE_CAPABILITIES`.
+  - `lib/api` gained `apiEnvelopeRequest` (data + meta) for paginated endpoints.
 
 ## What Is Not Implemented
 
-- Phase 2 remainder: admin document list UI (P2-007), upload/review UI (P2-008).
-- Audit coverage for institution/department admin actions (backlogged).
+- Phase 2 remainder: upload/review UI (P2-008).
+- Document detail page, summary, dates, bookmarks (Phase 6).
+- Audit-log UI (backlogged).
 - Phases 3–10.
 
 ## Active Blockers
@@ -56,10 +57,10 @@ P2-006 (Implement audit logging) — append-only audit trail for document events
 
 ## Current Git State
 
-`main` contains merged Phases 0–1 + P2-001..P2-005. Task branch `feat/P2-006-audit-logging` adds audit logging, all checks green:
+`main` contains merged Phases 0–1 + P2-001..P2-006. Task branch `feat/P2-007-admin-document-list` adds the admin documents UI, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (incl. tests)  tests ✅ (132, incl. audit trail)  build ✅ (5/5)  format ✅
+lint ✅  typecheck ✅ (incl. tests)  tests ✅ (132)  build ✅ (6/6 incl. web)  format ✅  live admin flow ✅ (list → submit → approve → publish)
 ```
 
 ## Model Handoff Instructions
@@ -98,6 +99,7 @@ When switching AI tools/models:
 | Document CRUD + visibility (draft hidden from students) | PASS |
 | Document lifecycle (full walk + guards) | PASS |
 | Audit trail (lifecycle events + admin API, tenant-scoped) | PASS |
+| Admin document list UI (live walk: submit→approve→publish) | PASS |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -105,7 +107,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P2-006 merges, start **P2-007** (Build admin document list) from updated `main` on branch `feat/P2-007-admin-document-list`.
+After P2-007 merges, start **P2-008** (Build upload/review UI shell) from updated `main` on branch `feat/P2-008-upload-review-ui` — closes Phase 2.
 
 ## Last Updated
 
