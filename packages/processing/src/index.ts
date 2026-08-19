@@ -1,4 +1,5 @@
 export * from './adequacy.js';
+export * from './chunker.js';
 export * from './heuristic-metadata-extractor.js';
 export * from './metadata.js';
 export * from './ocr.js';
