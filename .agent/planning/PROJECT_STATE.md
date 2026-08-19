@@ -10,30 +10,30 @@ Phase 5 (Search) — chunk storage done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P5-001** (Add document chunk storage schema) — implementation complete on task branch `feat/P5-001-chunk-storage`; PR pending human approval.
+**P5-002** (Add embedding provider interface) — implementation complete on task branch `feat/P5-002-embedding-interface`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P5-001-chunk-storage`
+`feat/P5-002-embedding-interface`
 
 ## Overall Status
 
-`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector) done and verified against pgvector/pg17; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG still pending. Chunking (P3-008) now has persistence.
+`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector) and P5-002 (embedding provider abstraction) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG (P5-003→) still pending.
 
 ## Last Completed Task
 
-P5-001 (Add document chunk storage schema) — `document_chunks` table with `vector(1024)` + repository + 7 integration tests; 203 tests passing (migrated on pgvector/pg17 via 5433).
+P5-002 (Add embedding provider interface) — `EmbeddingProvider` abstraction + `MockEmbeddingProvider` (deterministic hash, L2-normalized, 1024 dims) + 13 unit tests; 216 tests passing.
 
 ## What Is Working
 
-- Everything from Phases 0–2 + P3-001..P3-008 (merged into `main` via PRs #1–#23).
-- Chunk storage (this PR):
-  - **`infra/migrations/1787231000000_create-document-chunks.js`**: `CREATE EXTENSION IF NOT EXISTS vector`, `document_chunks` table (`id uuid PK`, `document_version_id uuid FK CASCADE`, `page_number int`, `chunk_index int NOT NULL`, `content text NOT NULL`, `token_count int NOT NULL`, `embedding vector(1024) nullable`, `metadata jsonb`, `created_at timestamptz`) with `UNIQUE(document_version_id, chunk_index)`, indexes on `document_version_id` and `page_number` (TECHNICAL_SPEC §5 Chunks, ADR-001 pgvector).
-  - Verified live on `pgvector/pgvector:pg17` (docker `pgvector-temp:5433`): `CREATE EXTENSION vector` ✅, migration `UP` ✅, `DOWN` ✅, vector type `vector(1024)` ✅.
-  - **`packages/shared/src/chunks.ts`**: `DocumentChunkRow` / `CreateChunkInput` shared types.
-  - **`apps/api/src/modules/documents/document-chunks.repository.ts`**: `DocumentChunksRepository` (`createMany` batch INSERT, `listByVersion` ordered, `countByVersion`, `deleteByVersion`) — version-owned, FK CASCADE to `document_versions`; embedding nullable until P5-004.
-  - **`apps/api/src/modules/documents/document-chunks.repository.test.ts`**: 7 integration tests (creation/listing ordered, per-page pageNumber, unique constraint, delete, empty, isolation, empty input) — all green on pgvector DB.
-  - `vitest.config.ts` alias extended for `@ikp/processing`/`@ikp/queue`/`@ikp/storage` workspace resolution; `apps/api/package.json` now depends on `@ikp/processing` for chunk helper reuse.
+- Everything from Phases 0–2 + P3-001..P5-001 (merged into `main` via PRs #1–#24).
+- Embedding provider interface (this PR):
+  - **`packages/processing/src/embedding.ts`**: `EmbeddingProvider` contract (`modelName()`, `dimensions()`, `embed(texts: string[]): Promise<number[][]>`) — provider-agnostic (ADR-003/007) for `vector(1024)` chunks (TECHNICAL_SPEC §10, AI_LLM_ARCHITECTURE §7/§18, IMPLEMENTATION_GUIDE §5).
+  - **`packages/processing/src/mock-embedding-provider.ts`**: `MockEmbeddingProvider` (deterministic SHA256 hash-expanded, L2-normalized, zero-vector for empty, batch-ordered, `createMockEmbeddingProvider`/`createEmbeddingProvider` factories). Default `mock-bge-m3` 1024 dims (matches DB); validates dimensions, handles empty/batch, factory switchable for P5-003 local adapter.
+  - **`packages/processing/src/mock-embedding-provider.test.ts`**: 13 unit tests (modelName/dimensions, vector dims, batch order, determinism, distinctness via cosine <0.99, empty/whitespace zero-vector, empty batch, L2-norm, factory, custom dims).
+  - `packages/processing/src/index.ts` re-exports.
+- Prior chunk storage (P5-001):
+  - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 7 integration tests.
 - Prior chunking (P3-008):
   - **`packages/processing` chunker** — deterministic, 500/75/700/100, paragraph→sentence→line, page-aware, overlap, Hindi support.
 - Prior metadata interface (P3-005):
@@ -44,7 +44,7 @@ P5-001 (Add document chunk storage schema) — `document_chunks` table with `vec
 ## What Is Not Implemented
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
-- Search remainder: embedding provider interface (P5-002), local adapter (P5-003), generate/store embeddings (P5-004), FTS (P5-005), vector search (P5-006), hybrid (P5-007), etc.
+- Search remainder: local embedding adapter (P5-003), generate/store embeddings (P5-004), FTS (P5-005), vector search (P5-006), hybrid (P5-007), search API (P5-009), etc.
 - Phases 4, 6–10.
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
@@ -66,10 +66,10 @@ P5-001 (Add document chunk storage schema) — `document_chunks` table with `vec
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P3-001..P3-008 (PR #23). Task branch `feat/P5-001-chunk-storage` adds the chunk storage schema + repository, all checks green:
+`main` contains merged Phases 0–2 + P5-001 (PR #24). Task branch `feat/P5-002-embedding-interface` adds the embedding provider abstraction, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (203, +7 chunk repo)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (216, +13 mock embeddings)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -95,7 +95,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (203) |
+| Unit/integration tests | PASS (216) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -116,6 +116,7 @@ When switching AI tools/models:
 | Metadata extraction interface (heuristic + Zod) | PASS (20) |
 | Chunking (deterministic, 500/75, page-aware) | PASS (20) |
 | Document chunk storage (pgvector `vector(1024)` + repo) | PASS (7) |
+| Embedding provider interface (mock, deterministic) | PASS (13) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
 | Search evaluation | NOT STARTED |
@@ -123,7 +124,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P5-001 merges, start **P5-002** (Add embedding provider interface — P0, depends P5-001) or **P5-005** (Implement PostgreSQL full-text search — P0) or **P4-001** (Implement review queue API — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P5-002 merges, start **P5-003** (Add local embedding adapter — P0) or **P5-005** (Implement PostgreSQL full-text search — P0) or **P4-001** (Implement review queue API — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 
