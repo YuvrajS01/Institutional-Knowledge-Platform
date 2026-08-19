@@ -38,7 +38,6 @@ export default function AdminPage() {
   const [institution, setInstitution] = useState<Institution | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [canManage, setCanManage] = useState(false);
-  const [userName, setUserName] = useState('');
 
   const [newName, setNewName] = useState('');
   const [newCode, setNewCode] = useState('');
@@ -65,7 +64,6 @@ export default function AdminPage() {
       }),
     ]);
     const membership = me.memberships.find((m) => m.institution_id === session.institutionId);
-    setUserName(me.name);
     setCanManage(membership ? hasCapability(membership.role, 'departments.manage') : false);
     setInstitution(current);
     setInstitutionName(current.name);
@@ -167,11 +165,6 @@ export default function AdminPage() {
     }
   }
 
-  function signOut() {
-    clearSession();
-    router.push('/login');
-  }
-
   if (state.phase === 'loading') {
     return (
       <main className="auth-main">
@@ -192,17 +185,7 @@ export default function AdminPage() {
   }
 
   return (
-    <main className="admin-main">
-      <header className="admin-header">
-        <div>
-          <h1>Admin</h1>
-          <p className="muted">Signed in as {userName}</p>
-        </div>
-        <button type="button" className="secondary" onClick={signOut}>
-          Sign out
-        </button>
-      </header>
-
+    <div>
       {notice && (
         <p className="notice" role="status">
           {notice}
@@ -312,6 +295,6 @@ export default function AdminPage() {
           </form>
         )}
       </section>
-    </main>
+    </div>
   );
 }

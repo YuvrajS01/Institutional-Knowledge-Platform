@@ -23,6 +23,19 @@ export interface RequestOptions {
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const envelope = await apiEnvelopeRequest(path, options);
+  return envelope.data as T;
+}
+
+export interface ApiEnvelope<TData, TMeta = Record<string, unknown>> {
+  data: TData;
+  meta?: TMeta;
+}
+
+export async function apiEnvelopeRequest<TData, TMeta = Record<string, unknown>>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<ApiEnvelope<TData, TMeta>> {
   const headers: Record<string, string> = {};
   if (options.body !== undefined) {
     headers['content-type'] = 'application/json';
@@ -42,10 +55,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   });
 
   if (response.status === 204) {
-    return undefined as T;
+    return undefined as unknown as ApiEnvelope<TData, TMeta>;
   }
 
-  const envelope = (await response.json()) as ErrorEnvelope;
+  const envelope = (await response.json()) as ErrorEnvelope & ApiEnvelope<TData, TMeta>;
   if (!response.ok) {
     throw new ApiError(
       response.status,
@@ -53,5 +66,5 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       envelope.error?.message ?? 'Request failed.',
     );
   }
-  return (envelope as { data: T }).data;
+  return envelope;
 }
