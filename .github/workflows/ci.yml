@@ -40,6 +40,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -67,6 +76,7 @@ jobs:
       - name: Test
         env:
           DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/institutional_knowledge
+          REDIS_URL: redis://localhost:6379
           S3_ENDPOINT: http://localhost:9000
           S3_REGION: us-east-1
           S3_BUCKET: institutional-documents
