@@ -16,6 +16,7 @@ import { registerDepartmentsRoutes } from './modules/departments/departments.rou
 import { registerInstitutionsRoutes } from './modules/institutions/institutions.route.js';
 import { registerDocumentsRoutes } from './modules/documents/documents.route.js';
 import { registerAuditRoutes } from './modules/audit/audit.route.js';
+import { registerSearchRoutes } from './modules/search/search.route.js';
 import { AuditLogService } from './modules/audit/audit-log.service.js';
 import type { JobQueue } from '@ikp/queue';
 
@@ -78,6 +79,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
             authorization,
           });
         }
+        await registerSearchRoutes(v1, { pool: options.pool!, authorization });
         await registerAuditRoutes(v1, { pool: options.pool!, authorization });
       },
       { prefix: '/api/v1' },

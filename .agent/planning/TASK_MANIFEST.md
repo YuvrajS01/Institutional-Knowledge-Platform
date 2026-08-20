@@ -95,7 +95,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P5-006 | P0 | DONE | Implement vector search | P5-004 |
 | P5-007 | P0 | DONE | Implement hybrid retrieval | P5-005,P5-006 |
 | P5-008 | P1 | TODO | Implement reranker interface/adapter | P5-007 |
-| P5-009 | P0 | TODO | Implement search API | P5-007 |
+| P5-009 | P0 | DONE | Implement search API | P5-007 |
 | P5-010 | P0 | TODO | Build search results UI | P5-009 |
 | P5-011 | P1 | TODO | Add filters/facets | P5-009 |
 | P5-012 | P1 | TODO | Add search analytics | P5-009 |
