@@ -6,23 +6,23 @@
 
 ## Current Phase
 
-Phase 8 (Institutional AI) — LLM provider interface + local LLM adapter + permission-aware retrieval + context builder done; Phase 6 (Consumption) — document detail API + document detail page done; Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
+Phase 8 (Institutional AI) — LLM provider interface + local LLM adapter + permission-aware retrieval + context builder + RAG answer service done; Phase 6 (Consumption) — document detail API + document detail page done; Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P8-005** (Implement context builder) — implementation complete on task branch `feat/P8-005-context-builder`; PR pending human approval.
+**P8-006** (Implement RAG answer service) — implementation complete on task branch `feat/P8-006-rag-answer-service`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P8-005-context-builder`
+`feat/P8-006-rag-answer-service`
 
 ## Overall Status
 
-`PHASE_8_IN_PROGRESS` — P8-001 (LLM provider interface), P8-002 (local LLM adapter), P8-004 (permission-aware retrieval), and P8-005 (context builder) done; `PHASE_6_IN_PROGRESS` — P6-001 (document detail API) and P6-002 (document detail page) done; `PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 6/8 (P6-003→, P8-003→, P8-006→) still pending.
+`PHASE_8_IN_PROGRESS` — P8-001 (LLM provider interface), P8-002 (local LLM adapter), P8-004 (permission-aware retrieval), P8-005 (context builder), and P8-006 (RAG answer service) done; `PHASE_6_IN_PROGRESS` — P6-001 (document detail API) and P6-002 (document detail page) done; `PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 6/8 (P6-003→, P8-003→, P8-007→) still pending.
 
 ## Last Completed Task
 
-P8-005 (Implement context builder) — `apps/api/src/modules/ai/context-builder.service.ts` (`ContextBuilderService` with `maxTokens`/`maxChunks`, `systemPrompt` grounded, `userPrompt` with `[n] Title (ID, Dept) + Content + Score`, `citations`, `tokenEstimate`, no-answer handling, token budget) + `context-builder.service.test.ts` 6 unit tests (empty, no-answer, single, maxChunks/maxTokens, match reasons, tiny budget); 354 tests passing (348 +6).
+P8-006 (Implement RAG answer service) — `apps/api/src/modules/ai/rag-answer.service.ts` (`RagAnswerService` with `PermissionAwareRetrievalService` + `ContextBuilderService` + `LLMProvider`, `answer` with retrieval → context → `llm.generate` → citation validation `[n]` → `grounded`/`confidence`/`citations`) + `rag-answer.service.test.ts` 4 unit tests (grounded, unsupported, empty, citations) + `rag-answer.integration.test.ts` 3 integration tests (grounded with citation, unsupported, tenant isolation) via `pgvector` + `mock` embeddings/LLM; 361 tests passing (354 +7).
 
 ## What Is Working
 
@@ -107,6 +107,13 @@ P8-005 (Implement context builder) — `apps/api/src/modules/ai/context-builder.
 - Permission-aware retrieval (P8-004):
   - **`apps/api/src/modules/search/permission-aware-retrieval.service.ts`**: `PermissionAwareRetrievalService` wrapping `HybridSearchService` with `visibleStatusesForRole` (`STUDENT`/`FACULTY` → `PUBLISHED` else all), validates `query`/`actor`, tenant `institutionId` via `HybridSearchService` `tenantCondition`, no post-generation filtering per AI_LLM_ARCHITECTURE §28, used by `P8-005`/`P8-006`.
   - **`apps/api/src/modules/search/permission-aware-retrieval.service.test.ts`**: 3 integration tests (student PUBLISHED only, tenant isolation, empty/missing actor) — requires `pgvector`.
+- Context builder (P8-005):
+  - **`apps/api/src/modules/ai/context-builder.service.ts`**: `ContextBuilderService` with `maxTokens`/`maxChunks`, `systemPrompt` grounded, `userPrompt` with `[n] Title (ID, Dept) + Content + Score`, `citations`, `tokenEstimate`, no-answer handling, token budget.
+  - **`apps/api/src/modules/ai/context-builder.service.test.ts`**: 6 unit tests (empty, no-answer, single, maxChunks/maxTokens, match reasons, tiny budget).
+- RAG answer service (P8-006):
+  - **`apps/api/src/modules/ai/rag-answer.service.ts`**: `RagAnswerService` with `PermissionAwareRetrievalService` + `ContextBuilderService` + `LLMProvider`, `answer` with retrieval → context → `llm.generate` → citation validation `[n]` → `grounded`/`confidence`/`citations`.
+  - **`apps/api/src/modules/ai/rag-answer.service.test.ts`**: 4 unit tests (grounded, unsupported, empty, citations).
+  - **`apps/api/src/modules/ai/rag-answer.integration.test.ts`**: 3 integration tests (grounded with citation, unsupported, tenant isolation) via `pgvector` + `mock` embeddings/LLM.
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
@@ -120,7 +127,7 @@ P8-005 (Implement context builder) — `apps/api/src/modules/ai/context-builder.
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
 - Search remainder: reranker (P5-008), filters/facets (P5-011), search analytics (P5-012), etc.
-- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), etc., and Phases 6–10 (P6-003→, P8-003→, P8-005→).
+- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), etc., and Phases 6–10 (P6-003→, P8-003→, P8-007→).
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
 ## Active Blockers
@@ -141,10 +148,10 @@ P8-005 (Implement context builder) — `apps/api/src/modules/ai/context-builder.
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 + P4-003 + P4-006 + P6-001 + P6-002 + P8-001 + P8-002 (PR #40). Task branch `feat/P8-004-permission-aware-retrieval` adds permission-aware retrieval, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 + P4-003 + P4-006 + P6-001 + P6-002 + P8-001 + P8-002 + P8-004 + P8-005 (PR #42). Task branch `feat/P8-006-rag-answer-service` adds RAG answer service, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (348, +3 permission-aware)  build ✅ (9/10)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (361, +7 RAG)  build ✅ (9/10)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -170,7 +177,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (348) |
+| Unit/integration tests | PASS (361) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -207,6 +214,8 @@ When switching AI tools/models:
 | LLM provider interface (mock, deterministic, grounded) | PASS (11) |
 | Local LLM adapter (Ollama/OpenAI, chat/generate) | PASS (17) |
 | Permission-aware retrieval (PUBLISHED, tenant) | PASS (3) |
+| Context builder (maxTokens, citations, no-answer) | PASS (6) |
+| RAG answer service (grounded, citations, tenant) | PASS (7) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -215,7 +224,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P8-004 merges, start **P8-005** (Implement context builder — P0) or **P8-006** (Implement RAG answer service — P0, now unblocked when P8-005 done) or **P6-003** (Add document summary display — P1). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P8-006 merges, start **P8-007** (Implement citation contract — P0) or **P8-008** (Implement unsupported-answer behavior — P0) or **P8-009** (Implement `/ai/ask` API — P0, depends `P8-006`+`P8-007`) or **P6-003** (Add document summary display — P1). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 
