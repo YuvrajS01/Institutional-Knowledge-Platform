@@ -189,6 +189,44 @@ export async function registerDocumentsRoutes(
   );
 
   app.get(
+    '/documents/review-queue',
+    {
+      preHandler: options.authorization.guard('document.approve'),
+      config: { rateLimit: READ_RATE_LIMIT },
+    },
+    async (request, reply) => {
+      const reviewQueueQuerySchema = listQuerySchema.omit({ status: true });
+      const parsed = reviewQueueQuerySchema.safeParse(request.query);
+      if (!parsed.success) {
+        throw new AppError(
+          'VALIDATION_ERROR',
+          'One or more fields are invalid.',
+          422,
+          parsed.error.flatten().fieldErrors,
+        );
+      }
+      const { data, total } = await service.reviewQueue(actorFor(request), {
+        search: parsed.data.search,
+        department_id: parsed.data.department_id,
+        document_type: parsed.data.document_type as DocumentType | undefined,
+        academic_year: parsed.data.academic_year,
+        course: parsed.data.course,
+        semester: parsed.data.semester,
+        tag: parsed.data.tag,
+        published_from: parsed.data.published_from,
+        published_to: parsed.data.published_to,
+        sort: parsed.data.sort,
+        page: parsed.data.page,
+        limit: parsed.data.limit,
+      });
+      return reply.status(200).send({
+        data,
+        meta: { page: parsed.data.page, limit: parsed.data.limit, total },
+      });
+    },
+  );
+
+  app.get(
     '/documents/:document_id',
     {
       preHandler: options.authorization.requireMember,
