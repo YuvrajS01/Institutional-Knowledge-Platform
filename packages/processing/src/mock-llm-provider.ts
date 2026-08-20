@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import type { GenerateRequest, GenerateResponse, LLMProvider, LLMProviderOptions } from './llm.js';
+import { LocalLLMProvider, type LocalLLMProviderOptions } from './local-llm-provider.js';
 
 /**
  * Deterministic mock LLM provider for tests and local development (P8-001).
@@ -87,7 +88,10 @@ export function createMockLLMProvider(options?: LLMProviderOptions): LLMProvider
   return new MockLLMProvider(options);
 }
 
-export function createLLMProvider(options?: LLMProviderOptions & { provider?: string }): LLMProvider {
+export type LLMFactoryOptions = LLMProviderOptions &
+  LocalLLMProviderOptions & { provider?: string };
+
+export function createLLMProvider(options?: LLMFactoryOptions): LLMProvider {
   const provider = (options?.provider ?? process.env.LLM_PROVIDER ?? 'mock').toLowerCase();
   const isMock = provider === 'mock' || provider === 'test';
 
@@ -95,7 +99,24 @@ export function createLLMProvider(options?: LLMProviderOptions & { provider?: st
     return createMockLLMProvider(options);
   }
 
-  // For now, only mock is implemented; P8-002 will add local Ollama/vLLM adapter
-  // behind the same factory. Throw for unimplemented providers to fail fast.
-  throw new Error(`LLM provider "${provider}" not yet implemented. Use "mock" or implement P8-002.`);
+  const isLocal =
+    provider === 'local' ||
+    provider === 'ollama' ||
+    provider === 'vllm' ||
+    provider === 'openai' ||
+    provider === 'http';
+
+  if (isLocal) {
+    const modelName = options?.modelName ?? process.env.LLM_MODEL ?? process.env.LLM_MODEL_NAME;
+    const baseUrl = options?.baseUrl ?? process.env.LLM_BASE_URL ?? process.env.OLLAMA_BASE_URL;
+    const endpoint = options?.endpoint ?? process.env.LLM_ENDPOINT;
+    return new LocalLLMProvider({
+      ...options,
+      modelName: modelName ?? 'qwen2:7b',
+      baseUrl,
+      endpoint,
+    });
+  }
+
+  throw new Error(`LLM provider "${provider}" not yet implemented. Use "mock" or "local".`);
 }

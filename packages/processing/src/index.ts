@@ -4,6 +4,7 @@ export * from './embedding.js';
 export * from './heuristic-metadata-extractor.js';
 export * from './llm.js';
 export * from './local-embedding-provider.js';
+export * from './local-llm-provider.js';
 export * from './metadata.js';
 export * from './mock-embedding-provider.js';
 export * from './mock-llm-provider.js';

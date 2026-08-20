@@ -58,8 +58,13 @@ describe('MockLLMProvider', () => {
     expect(res.text).toBeTruthy();
   });
 
-  it('throws for unimplemented provider', () => {
-    expect(() => createLLMProvider({ provider: 'ollama' })).toThrow(/not yet implemented/);
+  it('returns local provider for ollama (P8-002)', () => {
+    const provider = createLLMProvider({ provider: 'ollama' });
+    expect(provider.modelName()).toBe('qwen2:7b');
+  });
+
+  it('throws for truly unimplemented provider', () => {
+    expect(() => createLLMProvider({ provider: 'unknown-xyz' })).toThrow(/not yet implemented/);
   });
 
   it('implements LLMProvider interface correctly', () => {

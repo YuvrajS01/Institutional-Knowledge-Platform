@@ -130,7 +130,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | ID | Pri | Status | Task | Depends On |
 |---|---|---|---|---|
 | P8-001 | P0 | DONE | Create LLM provider interface | P0-007 |
-| P8-002 | P0 | TODO | Create local LLM adapter | P8-001 |
+| P8-002 | P0 | DONE | Create local LLM adapter | P8-001 |
 | P8-003 | P1 | TODO | Create cloud LLM adapter | P8-001 |
 | P8-004 | P0 | TODO | Implement permission-aware retrieval service | P5-007,P1-005 |
 | P8-005 | P0 | TODO | Implement context builder | P8-004 |
