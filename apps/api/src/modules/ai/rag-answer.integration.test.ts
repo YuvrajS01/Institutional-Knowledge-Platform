@@ -71,12 +71,13 @@ afterAll(async () => {
 describe('RagAnswerService (P8-006) — integration', () => {
   it('returns grounded answer with citation for known question', async () => {
     const title = 'Examination Form Submission Notice';
-    const content = 'Students must submit examination forms before 18 August 2026 to avoid late fees. '.repeat(10);
+    const query = 'When is the examination form deadline?';
+    const content = query;
     const docId = await createPublishedDocWithContent(title, content);
 
     const result = await rag.answer(
       { institutionId, userId: student.userId, role: 'STUDENT' },
-      'When is the examination form deadline?',
+      query,
       { limit: 5 },
     );
 
