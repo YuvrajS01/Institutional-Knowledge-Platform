@@ -147,7 +147,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 
 | ID | Pri | Status | Task | Depends On |
 |---|---|---|---|---|
-| P9-001 | P0 | TODO | Full E2E critical-path suite | P6-002,P8-010 |
+| P9-001 | P0 | DONE | Full E2E critical-path suite | P6-002,P8-010 |
 | P9-002 | P0 | DONE | Full security regression suite | P1-007,P4-006,P8-013 |
 | P9-003 | P1 | TODO | Load-test search | P5-009 |
 | P9-004 | P1 | TODO | Load-test async processing | P3-004 |
