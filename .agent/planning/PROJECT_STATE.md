@@ -6,23 +6,23 @@
 
 ## Current Phase
 
-Phase 8 (Institutional AI) — LLM provider interface done; Phase 6 (Consumption) — document detail API + document detail page done; Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
+Phase 8 (Institutional AI) — LLM provider interface + local LLM adapter done; Phase 6 (Consumption) — document detail API + document detail page done; Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P8-001** (Create LLM provider interface) — implementation complete on task branch `feat/P8-001-llm-provider-interface`; PR pending human approval.
+**P8-002** (Create local LLM adapter) — implementation complete on task branch `feat/P8-002-local-llm-adapter`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P8-001-llm-provider-interface`
+`feat/P8-002-local-llm-adapter`
 
 ## Overall Status
 
-`PHASE_8_IN_PROGRESS` — P8-001 (LLM provider interface) done; `PHASE_6_IN_PROGRESS` — P6-001 (document detail API) and P6-002 (document detail page) done; `PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 6/8 (P6-003→, P8-002→) still pending.
+`PHASE_8_IN_PROGRESS` — P8-001 (LLM provider interface) and P8-002 (local LLM adapter) done; `PHASE_6_IN_PROGRESS` — P6-001 (document detail API) and P6-002 (document detail page) done; `PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 6/8 (P6-003→, P8-003→) still pending.
 
 ## Last Completed Task
 
-P8-001 (Create LLM provider interface) — `packages/processing/src/llm.ts` (`LLMProvider` with `modelName()` + `generate({prompt, systemPrompt, temperature, maxTokens, stopSequences}) → GenerateResponse{text, model, usage}`) + `mock-llm-provider.ts` (`MockLLMProvider` deterministic SHA256 hash, grounded for institutional queries, unsupported for unknown, generic mock, `createLLMProvider` factory with `LLM_PROVIDER` env) + `mock-llm-provider.test.ts` 10 unit tests (modelName, grounded, deterministic, different, unsupported, empty, generic, factory, unimplemented, interface); 327 tests passing.
+P8-002 (Create local LLM adapter) — `packages/processing/src/local-llm-provider.ts` (Ollama `POST /api/generate`/`/api/chat` + OpenAI `POST /v1/chat/completions` compatible, `baseUrl`/`endpoint`/`timeoutMs`/`fetchImpl`, `modelName` `qwen2:7b` default, `temperature`/`maxTokens`/`systemPrompt`, `AbortController` timeout, flexible response parsing) + `mock-llm-provider.ts` factory now returns `LocalLLMProvider` for `local`/`ollama`/`vllm`/`openai`/`http` (via `LLM_MODEL`/`LLM_BASE_URL`/`LLM_ENDPOINT`) + `local-llm-provider.test.ts` 17 unit tests (modelName, empty, Ollama generate/chat, OpenAI, HTTP error, unexpected shape, endpoint override, trailing slash, factory, temperature, createLocal, explicit provider, env) + `mock-llm-provider.test.ts` now 11 tests (added unknown provider throws); 345 tests passing.
 
 ## What Is Working
 
@@ -98,6 +98,12 @@ P8-001 (Create LLM provider interface) — `packages/processing/src/llm.ts` (`LL
   - **`packages/processing/src/mock-llm-provider.ts`**: `MockLLMProvider` (deterministic SHA256, grounded for institutional queries, unsupported for unknown, generic mock, `createLLMProvider` factory with `LLM_PROVIDER` env).
   - **`packages/processing/src/mock-llm-provider.test.ts`**: 10 unit tests (modelName, grounded, deterministic, different, unsupported, empty, generic, factory, unimplemented, interface).
   - `packages/processing/src/index.ts` re-exports `llm` + `mock-llm-provider`.
+- Local LLM adapter (P8-002):
+  - **`packages/processing/src/local-llm-provider.ts`**: `LocalLLMProvider` (Ollama `POST /api/generate`/`/api/chat` + OpenAI `POST /v1/chat/completions` compatible, `baseUrl`/`endpoint`/`timeoutMs`/`fetchImpl`, `modelName` `qwen2:7b` default, `temperature`/`maxTokens`/`systemPrompt`, `AbortController` timeout, flexible response parsing).
+  - **`packages/processing/src/mock-llm-provider.ts`**: factory now returns `LocalLLMProvider` for `local`/`ollama`/`vllm`/`openai`/`http` (via `LLM_MODEL`/`LLM_BASE_URL`/`LLM_ENDPOINT`).
+  - **`packages/processing/src/local-llm-provider.test.ts`**: 17 unit tests (modelName, empty, Ollama generate/chat, OpenAI, HTTP error, unexpected shape, endpoint override, trailing slash, factory, temperature, createLocal, explicit provider, env).
+  - `packages/processing/src/mock-llm-provider.test.ts` now 11 tests (added unknown provider throws).
+  - `packages/processing/src/index.ts` re-exports `local-llm-provider`.
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
@@ -111,7 +117,7 @@ P8-001 (Create LLM provider interface) — `packages/processing/src/llm.ts` (`LL
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
 - Search remainder: reranker (P5-008), filters/facets (P5-011), search analytics (P5-012), etc.
-- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), etc., and Phases 6–10 (P6-003→, P8-002→).
+- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), etc., and Phases 6–10 (P6-003→, P8-003→).
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
 ## Active Blockers
@@ -132,10 +138,10 @@ P8-001 (Create LLM provider interface) — `packages/processing/src/llm.ts` (`LL
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 + P4-003 + P4-006 + P6-001 + P6-002 (PR #38). Task branch `feat/P8-001-llm-provider-interface` adds LLM provider interface, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 + P4-003 + P4-006 + P6-001 + P6-002 (PR #38). Task branch `feat/P8-002-local-llm-adapter` adds local LLM adapter, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (327, +10 LLM)  build ✅ (9/10)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (345, +17 local LLM +1 mock fix)  build ✅ (9/10)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -161,7 +167,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (327) |
+| Unit/integration tests | PASS (345) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -195,7 +201,8 @@ When switching AI tools/models:
 | Publication permission tests (PUBLISHED, SUPERSEDED, search) | PASS (8) |
 | Document detail API (PUBLISHED/SUPERSEDED, is_current) | PASS (4) |
 | Document detail page (is_current, superseded_by, versions) | PASS (build 10/10) |
-| LLM provider interface (mock, deterministic, grounded) | PASS (10) |
+| LLM provider interface (mock, deterministic, grounded) | PASS (11) |
+| Local LLM adapter (Ollama/OpenAI, chat/generate) | PASS (17) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -204,7 +211,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P8-001 merges, start **P8-002** (Create local LLM adapter — P0) or **P6-003** (Add document summary display — P1, depends `P3-006`/`P6-002`) or **P4-004** (Build approval queue UI — P1). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P8-002 merges, start **P8-004** (Implement permission-aware retrieval service — P0) or **P8-005** (Implement context builder — P0) or **P6-003** (Add document summary display — P1). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 
