@@ -5,6 +5,7 @@ import {
   type EmbeddingProvider,
   type EmbeddingProviderOptions,
 } from './embedding.js';
+import { LocalEmbeddingProvider, type LocalEmbeddingProviderOptions } from './local-embedding-provider.js';
 
 /**
  * Deterministic mock embedding provider for tests and local development
@@ -75,9 +76,40 @@ export function createMockEmbeddingProvider(options?: EmbeddingProviderOptions):
   return new MockEmbeddingProvider(options);
 }
 
-export function createEmbeddingProvider(options?: EmbeddingProviderOptions): EmbeddingProvider {
-  // Default factory for P5-002: mock implementation. P5-003 will add a local
-  // model adapter (e.g., BGE-M3 via transformers.js or ollama) behind the same
-  // factory/interface.
+export type EmbeddingFactoryOptions = EmbeddingProviderOptions &
+  LocalEmbeddingProviderOptions & { provider?: string };
+
+export function createEmbeddingProvider(options?: EmbeddingFactoryOptions): EmbeddingProvider {
+  const envProvider = (
+    options?.provider ??
+    process.env.EMBEDDING_PROVIDER ??
+    (process.env.EMBEDDING_PROVIDER_TYPE as string | undefined) ??
+    'mock'
+  ).toLowerCase();
+
+  const isLocal =
+    envProvider === 'local' ||
+    envProvider === 'ollama' ||
+    envProvider === 'http' ||
+    envProvider === 'openai' ||
+    envProvider === 'vllm';
+
+  if (isLocal) {
+    const dimensions =
+      options?.dimensions ??
+      (process.env.EMBEDDING_DIMENSIONS ? Number(process.env.EMBEDDING_DIMENSIONS) : undefined);
+    const modelName = options?.modelName ?? process.env.EMBEDDING_MODEL ?? process.env.EMBEDDING_MODEL_NAME;
+    const baseUrl = options?.baseUrl ?? process.env.EMBEDDING_BASE_URL ?? process.env.EMBEDDING_API_URL;
+    const endpoint = options?.endpoint ?? process.env.EMBEDDING_ENDPOINT;
+
+    return new LocalEmbeddingProvider({
+      ...options,
+      modelName: modelName ?? 'bge-m3',
+      dimensions,
+      baseUrl,
+      endpoint,
+    });
+  }
+
   return createMockEmbeddingProvider(options);
 }

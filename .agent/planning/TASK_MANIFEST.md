@@ -89,7 +89,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 |---|---|---|---|---|
 | P5-001 | P0 | DONE | Add document chunk storage schema | P3-008 |
 | P5-002 | P0 | DONE | Add embedding provider interface | P5-001 |
-| P5-003 | P0 | TODO | Add local embedding adapter | P5-002 |
+| P5-003 | P0 | DONE | Add local embedding adapter | P5-002 |
 | P5-004 | P0 | TODO | Generate/store embeddings | P5-003 |
 | P5-005 | P0 | DONE | Implement PostgreSQL full-text search | P2-001 |
 | P5-006 | P0 | TODO | Implement vector search | P5-004 |
