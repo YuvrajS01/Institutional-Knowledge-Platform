@@ -267,20 +267,25 @@ describe('Publication permission (P4-006)', () => {
     expect(titles).not.toContain(draftTitle);
 
     // Also verify that superseded not in search (if we supersede published)
-    const newId = await createDocument(deptAdminToken, `New For Search ${Date.now()}`);
+    const newTitle = `New For Search ${Date.now()}`;
+    const newId = await createDocument(deptAdminToken, newTitle);
     await submitReview(deptAdminToken, newId);
     await approve(approverToken, newId);
     await publish(approverToken, newId);
     await supersede(approverToken, publishedId, newId);
-    const res2 = await app.inject({
+    const res2Old = await app.inject({
       method: 'GET',
       url: `/api/v1/search?q=${encodeURIComponent(publishedTitle)}`,
       headers: headers(studentToken),
     });
-    const titles2 = res2.json().data.results.map((r: { title: string }) => r.title);
-    // Old superseded should not be in top results (or at least not with high score)
-    // It may still appear if lexical matches, but hybrid should penalize SUPERSEDED (not PUBLISHED)
-    // For now, just ensure new is present
-    expect(titles2).toContain(`New For Search`);
+    const titles2Old = res2Old.json().data.results.map((r: { title: string }) => r.title);
+    expect(titles2Old).not.toContain(publishedTitle);
+    const res2New = await app.inject({
+      method: 'GET',
+      url: `/api/v1/search?q=${encodeURIComponent(newTitle)}`,
+      headers: headers(studentToken),
+    });
+    const titles2New = res2New.json().data.results.map((r: { title: string }) => r.title);
+    expect(titles2New).toContain(newTitle);
   });
 });
