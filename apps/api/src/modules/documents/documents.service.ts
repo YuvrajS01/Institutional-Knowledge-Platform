@@ -105,6 +105,11 @@ export interface DocumentDetailView {
   published_at: string | null;
   effective_from: string | null;
   effective_to: string | null;
+  is_current: boolean;
+  superseded_by: { id: string; title: string } | null;
+  superseded_at: string | null;
+  superseded_reason: string | null;
+  current_version_id: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -429,11 +434,19 @@ export class DocumentsService {
     if (!document) {
       return null;
     }
-    if (document.status !== 'PUBLISHED' && actor.role === 'STUDENT') {
-      // Never leak unpublished documents to ordinary users.
+    if (
+      document.status !== 'PUBLISHED' &&
+      document.status !== 'SUPERSEDED' &&
+      actor.role === 'STUDENT'
+    ) {
+      // Never leak unpublished documents to ordinary users; SUPERSEDED remains visible as historical.
       return null;
     }
-    if (document.status !== 'PUBLISHED' && actor.role === 'FACULTY') {
+    if (
+      document.status !== 'PUBLISHED' &&
+      document.status !== 'SUPERSEDED' &&
+      actor.role === 'FACULTY'
+    ) {
       return null;
     }
 
@@ -441,6 +454,21 @@ export class DocumentsService {
     const department = document.department_id
       ? await this.departmentName(actor.institutionId, document.department_id)
       : null;
+
+    let supersededBy: { id: string; title: string } | null = null;
+    if (document.superseded_by_document_id) {
+      const superseding = await this.documents.findById(
+        actor.institutionId,
+        document.superseded_by_document_id,
+      );
+      if (superseding) {
+        supersededBy = { id: superseding.id, title: superseding.title };
+      } else {
+        supersededBy = { id: document.superseded_by_document_id, title: '' };
+      }
+    }
+
+    const isCurrent = document.status === 'PUBLISHED' && !document.superseded_by_document_id;
 
     return {
       id: document.id,
@@ -452,6 +480,11 @@ export class DocumentsService {
       published_at: document.published_at ? document.published_at.toISOString() : null,
       effective_from: document.effective_from ? document.effective_from.toISOString() : null,
       effective_to: document.effective_to ? document.effective_to.toISOString() : null,
+      is_current: isCurrent,
+      superseded_by: supersededBy,
+      superseded_at: document.superseded_at ? document.superseded_at.toISOString() : null,
+      superseded_reason: document.superseded_reason ?? null,
+      current_version_id: document.current_version_id,
       created_by: document.created_by,
       created_at: document.created_at.toISOString(),
       updated_at: document.updated_at.toISOString(),
