@@ -6,23 +6,23 @@
 
 ## Current Phase
 
-Phase 8 (Institutional AI) — LLM provider interface + local LLM adapter + permission-aware retrieval done; Phase 6 (Consumption) — document detail API + document detail page done; Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
+Phase 8 (Institutional AI) — LLM provider interface + local LLM adapter + permission-aware retrieval + context builder done; Phase 6 (Consumption) — document detail API + document detail page done; Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P8-004** (Implement permission-aware retrieval service) — implementation complete on task branch `feat/P8-004-permission-aware-retrieval`; PR pending human approval.
+**P8-005** (Implement context builder) — implementation complete on task branch `feat/P8-005-context-builder`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P8-004-permission-aware-retrieval`
+`feat/P8-005-context-builder`
 
 ## Overall Status
 
-`PHASE_8_IN_PROGRESS` — P8-001 (LLM provider interface), P8-002 (local LLM adapter), and P8-004 (permission-aware retrieval) done; `PHASE_6_IN_PROGRESS` — P6-001 (document detail API) and P6-002 (document detail page) done; `PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 6/8 (P6-003→, P8-003→, P8-005→) still pending.
+`PHASE_8_IN_PROGRESS` — P8-001 (LLM provider interface), P8-002 (local LLM adapter), P8-004 (permission-aware retrieval), and P8-005 (context builder) done; `PHASE_6_IN_PROGRESS` — P6-001 (document detail API) and P6-002 (document detail page) done; `PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 6/8 (P6-003→, P8-003→, P8-006→) still pending.
 
 ## Last Completed Task
 
-P8-004 (Implement permission-aware retrieval service) — `apps/api/src/modules/search/permission-aware-retrieval.service.ts` (`PermissionAwareRetrievalService` wrapping `HybridSearchService` with tenant `institutionId` and RBAC `PUBLISHED` for `STUDENT`/`FACULTY`, `visibleStatusesForRole`, validates `query`/`actor`, no post-generation filtering per AI_LLM_ARCHITECTURE §28) + `permission-aware-retrieval.service.test.ts` 3 integration tests (student PUBLISHED only, tenant isolation, empty/missing actor); 348 tests passing.
+P8-005 (Implement context builder) — `apps/api/src/modules/ai/context-builder.service.ts` (`ContextBuilderService` with `maxTokens`/`maxChunks`, `systemPrompt` grounded, `userPrompt` with `[n] Title (ID, Dept) + Content + Score`, `citations`, `tokenEstimate`, no-answer handling, token budget) + `context-builder.service.test.ts` 6 unit tests (empty, no-answer, single, maxChunks/maxTokens, match reasons, tiny budget); 354 tests passing (348 +6).
 
 ## What Is Working
 
