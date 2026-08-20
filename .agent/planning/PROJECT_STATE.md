@@ -6,28 +6,28 @@
 
 ## Current Phase
 
-Phase 5 (Search) — lexical FTS + chunk storage done; Phase 3 remainder P1 tasks pending.
+Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P5-005** (Implement PostgreSQL full-text search) — implementation complete on task branch `feat/P5-005-full-text-search`; PR pending human approval.
+**P5-003** (Add local embedding adapter) — implementation complete on task branch `feat/P5-003-local-embedding-adapter`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P5-005-full-text-search`
+`feat/P5-003-local-embedding-adapter`
 
 ## Overall Status
 
-`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), and P5-005 (PostgreSQL full-text search) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG (P5-003→) still pending.
+`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), and P5-005 (PostgreSQL full-text search) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG (P5-004→) still pending.
 
 ## Last Completed Task
 
-P5-005 (Implement PostgreSQL full-text search) — `documents.search_vector` tsvector + weighted trigger + GIN index + backfill; repository search uses `ts_rank` + recency; 4 FTS route tests (stemming, word order, ranking, trigger sync); 220 tests passing.
+P5-003 (Add local embedding adapter) — `packages/processing/src/local-embedding-provider.ts` (Ollama `/api/embed` + OpenAI `/v1/embeddings` compatible, batching, zero-vector for empty, dimension validation, timeout via AbortController, env-driven factory) + `mock-embedding-provider.ts` factory switch (`EMBEDDING_PROVIDER` env: mock/local/ollama/http/openai/vllm) + 27 unit tests (modelName/dimensions, empty, batch, ollama/openai shapes, legacy single, batching, HTTP error, dimension mismatch, non-finite, normalize, endpoint resolution, factory switch); 247 tests passing.
 
 ## What Is Working
 
 - Everything from Phases 0–2 + P3-001..P5-001 (merged into `main` via PRs #1–#24).
-- Full-text search (this PR, P5-005):
+- Full-text search (P5-005):
   - **`infra/migrations/1787232000000_add-document-search-vector.js`**: `documents.search_vector tsvector` + trigger `documents_search_vector_update()` (weighted A title / B slug / C document_type) + GIN index `documents_search_vector_idx` + backfill for existing rows; down-migration drops trigger/function/index/column.
   - **`apps/api/src/modules/documents/documents.repository.ts`**: `list()` search now uses `d.search_vector @@ plainto_tsquery('english', $n) OR d.title ILIKE $m` and, when searching, orders by `ts_rank(d.search_vector, plainto_tsquery(...)) DESC, d.created_at DESC` (relevance + recency). Non-search listings unchanged.
   - **`apps/api/src/modules/documents/documents.route.test.ts`**: 4 new FTS tests — stemmed term match (`schedules` → `Holiday Schedule`), token-order independence (`fare refund`), title relevance ranking (double-token title outranks), and search_vector trigger sync on title update.
@@ -36,6 +36,12 @@ P5-005 (Implement PostgreSQL full-text search) — `documents.search_vector` tsv
   - **`packages/processing/src/mock-embedding-provider.ts`**: `MockEmbeddingProvider` (deterministic SHA256 hash-expanded, L2-normalized, zero-vector for empty, batch-ordered, `createMockEmbeddingProvider`/`createEmbeddingProvider` factories). Default `mock-bge-m3` 1024 dims (matches DB); validates dimensions, handles empty/batch, factory switchable for P5-003 local adapter.
   - **`packages/processing/src/mock-embedding-provider.test.ts`**: 13 unit tests (modelName/dimensions, vector dims, batch order, determinism, distinctness via cosine <0.99, empty/whitespace zero-vector, empty batch, L2-norm, factory, custom dims).
   - `packages/processing/src/index.ts` re-exports.
+- Local embedding adapter (P5-003):
+  - **`packages/processing/src/local-embedding-provider.ts`**: `LocalEmbeddingProvider` (provider-agnostic adapter for Ollama `POST /api/embed` and OpenAI-compatible `POST /v1/embeddings`; supports `BGE-M3` 1024 dims, batching via `maxBatchSize`, zero vectors for empty inputs, dimension validation, timeout/AbortController, `normalize` option, flexible endpoint resolution from `EMBEDDING_BASE_URL`/`EMBEDDING_ENDPOINT`).
+  - **`packages/processing/src/mock-embedding-provider.ts`**: updated `createEmbeddingProvider` factory — reads `EMBEDDING_PROVIDER` (`mock|local|ollama|http|openai|vllm`), `EMBEDDING_MODEL`, `EMBEDDING_BASE_URL`, `EMBEDDING_DIMENSIONS`, `EMBEDDING_ENDPOINT` and returns `LocalEmbeddingProvider` when configured, otherwise `MockEmbeddingProvider`.
+  - **`packages/processing/src/local-embedding-provider.test.ts`**: 27 unit tests (defaults, custom, invalid dims/batch, empty handling without fetch, single/batch order, Ollama/OpenAI/legacy shapes, batching, HTTP error, dimension mismatch, non-finite, unexpected shape, legacy single, endpoint resolution, normalize, factory switch via env).
+  - `packages/processing/src/index.ts` re-exports `LocalEmbeddingProvider`.
+  - `.env.example` updated with `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_BASE_URL`, `EMBEDDING_ENDPOINT`, `EMBEDDING_DIMENSIONS` documentation.
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 7 integration tests.
 - Prior chunking (P3-008):
@@ -48,7 +54,7 @@ P5-005 (Implement PostgreSQL full-text search) — `documents.search_vector` tsv
 ## What Is Not Implemented
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
-- Search remainder: local embedding adapter (P5-003), generate/store embeddings (P5-004), vector search (P5-006), hybrid (P5-007), search API (P5-009), etc.
+- Search remainder: generate/store embeddings (P5-004), vector search (P5-006), hybrid (P5-007), search API (P5-009), etc.
 - Phases 4, 6–10.
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
@@ -70,10 +76,10 @@ P5-005 (Implement PostgreSQL full-text search) — `documents.search_vector` tsv
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 (PR #25). Task branch `feat/P5-005-full-text-search` adds lexical full-text search, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 (PR #26). Task branch `feat/P5-003-local-embedding-adapter` adds local embedding adapter, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (220, +4 FTS)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (247, +27 local adapter)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -99,7 +105,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (220) |
+| Unit/integration tests | PASS (247) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -121,6 +127,7 @@ When switching AI tools/models:
 | Chunking (deterministic, 500/75, page-aware) | PASS (20) |
 | Document chunk storage (pgvector `vector(1024)` + repo) | PASS (7) |
 | Embedding provider interface (mock, deterministic) | PASS (13) |
+| Local embedding adapter (Ollama/OpenAI, batching, env factory) | PASS (27) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -129,8 +136,8 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P5-005 merges, start **P5-003** (Add local embedding adapter — P0) or **P5-006** (Implement vector search — P0) or **P4-001** (Implement review queue API — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P5-003 merges, start **P5-004** (Generate/store embeddings — P0) or **P4-001** (Implement review queue API — P0) or **P5-006** (Implement vector search — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 
-2026-08-19
+2026-08-20

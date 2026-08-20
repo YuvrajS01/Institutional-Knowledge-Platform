@@ -2,6 +2,7 @@ export * from './adequacy.js';
 export * from './chunker.js';
 export * from './embedding.js';
 export * from './heuristic-metadata-extractor.js';
+export * from './local-embedding-provider.js';
 export * from './metadata.js';
 export * from './mock-embedding-provider.js';
 export * from './ocr.js';
