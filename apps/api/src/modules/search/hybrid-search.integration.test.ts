@@ -83,19 +83,20 @@ describe('HybridSearchService (P5-007) — integration', () => {
       'Examination Form Deadline Notice',
       'Hostel allotment circular for first year students. '.repeat(20),
     );
-    // Doc B: semantic match (chunk similar to query) but lexical not (title random)
+    // Doc B: semantic match (chunk identical to query) but lexical not (title random)
+    // Use exact query as chunk so mock embedding is identical (cosine 1)
     const docBSemanticOnly = await createDocWithChunks(
       identity.institutionId,
       identity.userId,
       'Random Unrelated Title XYZ',
-      `${query} `.repeat(20),
+      query,
     );
-    // Doc C: both lexical and semantic
+    // Doc C: both lexical and semantic (title + chunk identical to query)
     const docCBoth = await createDocWithChunks(
       identity.institutionId,
       identity.userId,
       'Examination Form Deadline Notice',
-      `${query} `.repeat(20),
+      query,
     );
 
     const results = await hybrid.search(identity.institutionId, query, { limit: 10 });
@@ -120,7 +121,7 @@ describe('HybridSearchService (P5-007) — integration', () => {
 
   it('enforces tenant isolation', async () => {
     const query = 'Tenant hybrid isolation query unique 12345';
-    await createDocWithChunks(otherIdentity.institutionId, otherIdentity.userId, 'Other Tenant Hybrid Doc', query.repeat(10));
+    await createDocWithChunks(otherIdentity.institutionId, otherIdentity.userId, 'Other Tenant Hybrid Doc', query);
     const results = await hybrid.search(identity.institutionId, query, { limit: 10 });
     for (const r of results) {
       expect(r.title).not.toBe('Other Tenant Hybrid Doc');
@@ -159,9 +160,9 @@ describe('HybridSearchService (P5-007) — integration', () => {
       identity.institutionId,
       identity.userId,
       'NoLexMatchTitle',
-      uniqueSemantic.repeat(10),
+      uniqueSemantic,
     );
-    // Query that is semantically similar but lexically not (title doesn't contain terms)
+    // Query that is semantically identical (chunk == query) but lexically not (title doesn't contain terms)
     const query = uniqueSemantic;
     const results = await hybrid.search(identity.institutionId, query, { limit: 5 });
     const found = results.find((r) => r.document_id === docId);
