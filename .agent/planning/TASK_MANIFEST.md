@@ -154,7 +154,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P9-005 | P1 | TODO | Add metrics/tracing | P0-008 |
 | P9-006 | P1 | TODO | Validate backup/restore | P1-001,P2-002 |
 | P9-007 | P1 | TODO | Production deployment automation | P9-005 |
-| P9-008 | P0 | TODO | Run MVP final gate | ALL_P0 |
+| P9-008 | P0 | DONE | Run MVP final gate | ALL_P0 |
 
 
 ### Git Traceability
