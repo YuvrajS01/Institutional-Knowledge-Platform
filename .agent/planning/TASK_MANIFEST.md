@@ -141,7 +141,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P8-010 | P0 | DONE | Build Ask Institution UI | P8-009 |
 | P8-011 | P0 | DONE | Add prompt-injection tests | P8-006 |
 | P8-012 | P0 | DONE | Add RAG evaluation dataset | P8-006 |
-| P8-013 | P0 | TODO | Add cross-tenant RAG tests | P8-004,P8-009 |
+| P8-013 | P0 | DONE | Add cross-tenant RAG tests | P8-004,P8-009 |
 
 ## Phase 9 — Hardening
 
