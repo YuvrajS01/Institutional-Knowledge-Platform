@@ -6,23 +6,23 @@
 
 ## Current Phase
 
-Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API done; Phase 3 remainder P1 tasks pending.
+Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P5-009** (Implement search API) — implementation complete on task branch `feat/P5-009-search-api`; PR pending human approval.
+**P5-010** (Build search results UI) — implementation complete on task branch `feat/P5-010-search-results-ui`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P5-009-search-api`
+`feat/P5-010-search-results-ui`
 
 ## Overall Status
 
-`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), and P5-009 (search API) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search (P5-008/010→) still pending.
+`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), and P5-010 (search results UI) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search (P5-008/011→) still pending.
 
 ## Last Completed Task
 
-P5-009 (Implement search API) — `apps/api/src/modules/search/search.route.ts` (`GET /search?q=&department_id=&document_type=&page=&limit=` with Zod, `requireMember` auth, `60/min` rate limit, `visibleStatusesForRole` PUBLISHED for STUDENT/FACULTY, hybrid `HybridSearchService` delegation, `facets` department counts, `meta.total/latency_ms`, `score`/`match_reasons`/`is_current`) + `apps/api/src/app.ts` registration under `/api/v1` + `search.route.test.ts` 7 integration tests (lexical, semantic, draft hidden, tenant isolation, missing q 422, department filter, 401); 284 tests passing.
+P5-010 (Build search results UI) — `apps/web/src/app/search/page.tsx` (`'use client'`, `HybridSearchService` via `GET /search`, `q|query|search` + `department_id`/`document_type` filters, `page`/`limit` pagination, `facet` counts, `loading`/`error`/`empty` (We couldn't find…) / `success` states per UI_UX_DESIGN §6/8, `Score`/`match_reasons`/`is_current` badges, `Open`/`Share`, `Suspense` for `useSearchParams`, `requireMember` redirect to `/login`) + `apps/web/src/app/page.tsx` (home `form action="/search"` search bar per UI_UX §5); `next build` 9 routes including `/search` 3.07 kB, `284` tests passing.
 
 ## What Is Working
 
@@ -64,6 +64,10 @@ P5-009 (Implement search API) — `apps/api/src/modules/search/search.route.ts` 
   - **`apps/api/src/modules/search/search.route.ts`**: `GET /search` — `requireMember` auth, `60/min` rate limit, Zod `q|query|search` (required, 1..200), `department_id` (uuid), `document_type` (enum), `page`/`limit` (1..100, default 20), `visibleStatusesForRole` (`STUDENT`/`FACULTY` → `PUBLISHED` else all), delegates to `HybridSearchService.search(institutionId, q, {limit, offset, statuses, departmentId, documentType})`, returns `{data:{query, results:[{document_id,title,score,summary:null,match_reasons,published_at,is_current,lexical_score,semantic_score}], facets:{departments:[{id,name,count}]}}, meta:{total, latency_ms}}` per `API_SPEC_SHEET.md` §7.
   - **`apps/api/src/app.ts`**: registers `registerSearchRoutes` under `/api/v1` (after `registerDocumentsRoutes`, before `registerAuditRoutes`).
   - **`apps/api/src/modules/search/search.route.test.ts`**: 7 integration tests (lexical, semantic, draft hidden, tenant isolation, missing q 422, department filter, 401) — requires `pgvector` + `pgvector/pgvector:pg17` + MinIO.
+- Search results UI (P5-010):
+  - **`apps/web/src/app/search/page.tsx`**: `'use client'` + `Suspense` for `useSearchParams`; `HybridSearchService` via `GET /search` (`apiEnvelopeRequest`), `q|query|search` + `department_id`/`document_type` filters, `page`/`limit` pagination, `visibleStatusesForRole` handled server-side; states `idle` (try asking), `loading` (aria-busy), `error` (retry), `empty` (We couldn't find… + suggestions per UI_UX §8), `success` (results grid with `title`/`score`/`match_reasons`/`published_at`/`is_current` badge per UI_UX §6, `Open`/`Share`, `facets` counts, `pagination`); `requireMember` redirect to `/login` on 401.
+  - **`apps/web/src/app/page.tsx`**: home `form action="/search"` search bar (UI_UX §5: “Search anything in your institution…” + try asking) + `Search` link.
+  - `next build` 9 routes including `/search` 3.07 kB, `284` tests passing.
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
@@ -98,10 +102,10 @@ P5-009 (Implement search API) — `apps/api/src/modules/search/search.route.ts` 
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 (PR #30). Task branch `feat/P5-009-search-api` adds search API, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 (PR #31). Task branch `feat/P5-010-search-results-ui` adds search results UI, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (284, +7 search API)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (284)  build ✅ (9/9 including /search)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -154,6 +158,7 @@ When switching AI tools/models:
 | Vector search (pgvector cosine, tenant, PUBLISHED) | PASS (11) |
 | Hybrid retrieval (lexical + vector merge, 0.4/0.6) | PASS (9) |
 | Search API (hybrid, tenant, PUBLISHED, facets) | PASS (7) |
+| Search results UI (hybrid, filters, pagination, empty) | PASS (build 9/9) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -162,7 +167,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P5-009 merges, start **P5-010** (Build search results UI — P0) or **P4-001** (Implement review queue API — P0) or **P4-003** (Implement supersession/version APIs — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P5-010 merges, start **P5-014** (Build search evaluation set — P0) or **P4-001** (Implement review queue API — P0) or **P4-003** (Implement supersession/version APIs — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 
