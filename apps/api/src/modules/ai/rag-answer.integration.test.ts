@@ -81,9 +81,19 @@ describe('RagAnswerService (P8-006) — integration', () => {
       { limit: 5 },
     );
 
+    // Debug: also check what retrieval would return directly
+    const { PermissionAwareRetrievalService } = await import('../search/permission-aware-retrieval.service.js');
+    const retrieval = new PermissionAwareRetrievalService(pool);
+    const directRetrieved = await retrieval.retrieve(
+      { institutionId, userId: student.userId, role: 'STUDENT' },
+      query,
+      { limit: 5 },
+    );
+    console.error('RAG DEBUG directRetrieved:', JSON.stringify(directRetrieved.map((r) => ({ id: r.document_id, title: r.title, score: r.hybrid_score })), null, 2));
+
     // Debug: throw to force vitest to show the result in the failure output
     if (!result.grounded) {
-      throw new Error(`RAG NOT GROUNDED DEBUG: ${JSON.stringify({ result, docId, title, query }, null, 2)}`);
+      throw new Error(`RAG NOT GROUNDED DEBUG: ${JSON.stringify({ result, docId, title, query, directRetrieved: directRetrieved.length }, null, 2)}`);
     }
 
     expect(result.grounded).toBe(true);
