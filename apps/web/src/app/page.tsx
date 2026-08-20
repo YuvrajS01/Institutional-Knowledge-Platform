@@ -19,7 +19,8 @@ export default function HomePage() {
         />
         <button type="submit">Search</button>
         <p className="muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
-          Try: &ldquo;When is exam form submission?&rdquo; · &ldquo;Find the hostel fee notice&rdquo;
+          Try: &ldquo;When is exam form submission?&rdquo; · &ldquo;Find the hostel fee
+          notice&rdquo;
         </p>
       </form>
 
@@ -29,7 +30,8 @@ export default function HomePage() {
         phases.
       </p>
       <p>
-        <a href="/login">Sign in</a> · <a href="/admin">Admin</a> · <a href="/search">Search</a>
+        <a href="/login">Sign in</a> · <a href="/admin">Admin</a> · <a href="/search">Search</a> ·{' '}
+        <a href="/ask">Ask Institution</a>
       </p>
     </main>
   );
