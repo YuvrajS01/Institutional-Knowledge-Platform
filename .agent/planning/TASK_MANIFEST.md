@@ -137,7 +137,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P8-006 | P0 | DONE | Implement RAG answer service | P8-002,P8-005 |
 | P8-007 | P0 | DONE | Implement citation contract | P8-006 |
 | P8-008 | P0 | DONE | Implement unsupported-answer behavior | P8-006 |
-| P8-009 | P0 | TODO | Implement `/ai/ask` API | P8-006,P8-007 |
+| P8-009 | P0 | DONE | Implement `/ai/ask` API | P8-006,P8-007 |
 | P8-010 | P0 | TODO | Build Ask Institution UI | P8-009 |
 | P8-011 | P0 | TODO | Add prompt-injection tests | P8-006 |
 | P8-012 | P0 | TODO | Add RAG evaluation dataset | P8-006 |
