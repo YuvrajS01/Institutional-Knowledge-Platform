@@ -75,7 +75,7 @@ afterAll(async () => {
 
 describe('HybridSearchService (P5-007) — integration', () => {
   it('ranks document matching both lexical and semantic highest', async () => {
-    const query = 'Examination form deadline 18 August 2026';
+    const query = 'Examination form deadline';
     // Doc A: lexical match (title) but semantic dissimilar (chunk unrelated)
     const docALexicalOnly = await createDocWithChunks(
       identity.institutionId,
