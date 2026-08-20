@@ -37,7 +37,13 @@ type SearchState =
   | { phase: 'loading' }
   | { phase: 'error'; message: string }
   | { phase: 'empty'; query: string }
-  | { phase: 'success'; query: string; results: SearchResult[]; meta: SearchMeta; facets: SearchResponse['facets'] };
+  | {
+      phase: 'success';
+      query: string;
+      results: SearchResult[];
+      meta: SearchMeta;
+      facets: SearchResponse['facets'];
+    };
 
 function SearchContent() {
   const router = useRouter();
@@ -47,9 +53,14 @@ function SearchContent() {
   const [departmentId, setDepartmentId] = useState(searchParams.get('department_id') ?? '');
   const [documentType, setDocumentType] = useState(searchParams.get('document_type') ?? '');
   const [page, setPage] = useState(Number(searchParams.get('page') ?? '1'));
-  const [state, setState] = useState<SearchState>(initialQuery ? { phase: 'loading' } : { phase: 'idle' });
+  const [state, setState] = useState<SearchState>(
+    initialQuery ? { phase: 'loading' } : { phase: 'idle' },
+  );
 
-  async function executeSearch(q: string, opts: { page: number; departmentId: string; documentType: string }) {
+  async function executeSearch(
+    q: string,
+    opts: { page: number; departmentId: string; documentType: string },
+  ) {
     const trimmed = q.trim();
     if (!trimmed) {
       setState({ phase: 'idle' });
@@ -70,16 +81,25 @@ function SearchContent() {
     if (opts.documentType) params.set('document_type', opts.documentType);
 
     try {
-      const full = await apiEnvelopeRequest<SearchResponse, SearchMeta>(`/search?${params.toString()}`, {
-        token: session.accessToken,
-        institutionId: session.institutionId,
-      });
+      const full = await apiEnvelopeRequest<SearchResponse, SearchMeta>(
+        `/search?${params.toString()}`,
+        {
+          token: session.accessToken,
+          institutionId: session.institutionId,
+        },
+      );
       const data = full.data;
       const meta = full.meta ?? { total: data.results.length, latency_ms: 0 };
       if (data.results.length === 0) {
         setState({ phase: 'empty', query: trimmed });
       } else {
-        setState({ phase: 'success', query: trimmed, results: data.results, meta, facets: data.facets });
+        setState({
+          phase: 'success',
+          query: trimmed,
+          results: data.results,
+          meta,
+          facets: data.facets,
+        });
       }
     } catch (error) {
       if (error instanceof ApiError && error.statusCode === 401) {
@@ -126,7 +146,10 @@ function SearchContent() {
   return (
     <main>
       <h1>Search</h1>
-      <p className="muted">Find the authoritative source — even when you only remember the meaning.</p>
+      <p className="muted">
+        Find the authoritative source — even when you only remember the meaning. Or{' '}
+        <Link href="/ask">Ask Institution</Link> for a grounded answer with citations.
+      </p>
 
       <form className="form" onSubmit={handleSubmit} role="search" aria-label="Document search">
         <label htmlFor="search-q">Search</label>
@@ -148,7 +171,11 @@ function SearchContent() {
             value={departmentId}
             onChange={(e) => setDepartmentId(e.target.value)}
             aria-label="Department filter"
-            style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+            style={{
+              padding: '0.5rem 0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '0.375rem',
+            }}
           >
             <option value="">All departments</option>
           </select>
@@ -161,7 +188,11 @@ function SearchContent() {
             value={documentType}
             onChange={(e) => setDocumentType(e.target.value)}
             aria-label="Document type filter"
-            style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+            style={{
+              padding: '0.5rem 0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: '0.375rem',
+            }}
           >
             <option value="">All types</option>
             <option value="NOTICE">Notice</option>
@@ -198,7 +229,12 @@ function SearchContent() {
       {state.phase === 'error' && (
         <div className="card" role="alert">
           <p className="error">{state.message}</p>
-          <button type="button" onClick={() => void executeSearch(query || initialQuery, { page, departmentId, documentType })}>
+          <button
+            type="button"
+            onClick={() =>
+              void executeSearch(query || initialQuery, { page, departmentId, documentType })
+            }
+          >
             Retry
           </button>
         </div>
@@ -241,8 +277,10 @@ function SearchContent() {
                   </span>
                 </div>
                 <p className="muted" style={{ fontSize: '0.85rem' }}>
-                  {result.published_at ? new Date(result.published_at).toLocaleDateString() : 'Unpublished'} · Score{' '}
-                  {result.score.toFixed(3)}
+                  {result.published_at
+                    ? new Date(result.published_at).toLocaleDateString()
+                    : 'Unpublished'}{' '}
+                  · Score {result.score.toFixed(3)}
                   {result.match_reasons.length > 0 && ` · ${result.match_reasons.join(', ')}`}
                 </p>
                 {result.summary && <p>{result.summary}</p>}
@@ -255,7 +293,9 @@ function SearchContent() {
                     className="secondary"
                     onClick={async () => {
                       try {
-                        await navigator.clipboard.writeText(`${window.location.origin}/documents/${result.document_id}`);
+                        await navigator.clipboard.writeText(
+                          `${window.location.origin}/documents/${result.document_id}`,
+                        );
                       } catch {
                         // ignore
                       }
@@ -289,7 +329,13 @@ function SearchContent() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<main><p>Loading search…</p></main>}>
+    <Suspense
+      fallback={
+        <main>
+          <p>Loading search…</p>
+        </main>
+      }
+    >
       <SearchContent />
     </Suspense>
   );
