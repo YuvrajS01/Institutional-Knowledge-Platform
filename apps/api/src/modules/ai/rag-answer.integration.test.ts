@@ -81,11 +81,10 @@ describe('RagAnswerService (P8-006) — integration', () => {
       { limit: 5 },
     );
 
-    // Debug - use console.error to ensure it shows in vitest stdout
-    console.error('RAG DEBUG result:', JSON.stringify(result, null, 2));
-    console.error('RAG DEBUG DocId:', docId, 'Title:', title, 'Query:', query);
-    // Also log via console.log for vitest's stdout capture
-    console.log('RAG result:', JSON.stringify(result, null, 2));
+    // Debug: throw to force vitest to show the result in the failure output
+    if (!result.grounded) {
+      throw new Error(`RAG NOT GROUNDED DEBUG: ${JSON.stringify({ result, docId, title, query }, null, 2)}`);
+    }
 
     expect(result.grounded).toBe(true);
     expect(result.confidence).toBe('high');
