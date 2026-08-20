@@ -222,9 +222,12 @@ describe('Publication permission (P4-006)', () => {
     // Old is SUPERSEDED, not PUBLISHED, so not in default list (which is PUBLISHED for student)
     expect(ids).not.toContain(oldId);
 
-    // Student can still fetch superseded directly? Should be visible as SUPERSEDED? For now, get returns null for non-PUBLISHED for student, so 404
+    // Student can fetch superseded directly as historical (P6-001: SUPERSEDED visible with is_current false)
     const getOld = await app.inject({ method: 'GET', url: `/api/v1/documents/${oldId}`, headers: headers(studentToken) });
-    expect(getOld.statusCode).toBe(404);
+    expect(getOld.statusCode).toBe(200);
+    expect(getOld.json().data.status).toBe('SUPERSEDED');
+    expect(getOld.json().data.is_current).toBe(false);
+    expect(getOld.json().data.superseded_by.id).toBe(newId);
   });
 
   it('cross-tenant cannot approve/publish', async () => {
