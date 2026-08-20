@@ -1,5 +1,9 @@
 import type { JobData } from '@ikp/queue';
 import {
+  createChunker,
+  createEmbeddingProvider,
+  type Chunker,
+  type EmbeddingProvider,
   isTextAdequate,
   OCR_IMAGE_MIME_TYPES,
   type OCRProvider,
@@ -8,27 +12,43 @@ import {
 import { extractedTextKey, type ObjectStorage } from '@ikp/storage';
 
 import type { WorkerDbPool } from '../db-pool.js';
+import { DocumentChunksRepository } from './document-chunks.repository.js';
 import { ProcessingRepository } from './processing.repository.js';
 
 /**
- * Document processing orchestration (TECH_SPEC §6/§7):
+ * Document processing orchestration (TECH_SPEC §6/§7, P5-004):
  *
  *   load version → verify tenant → download original → extract text
- *   → if inadequate and raster, OCR → persist extraction → write extracted.txt
+ *   → if inadequate and raster, OCR → chunk → embed → persist extraction
+ *   + chunks/embeddings → write extracted.txt
  *
  * The pipeline is idempotent (already-completed versions are skipped) and
- * tenant-aware (every step is scoped by institution id).
+ * tenant-aware (every step is scoped by institution id). Embeddings are
+ * generated via the provider-agnostic `EmbeddingProvider` (mock by default,
+ * local Ollama/OpenAI when `EMBEDDING_PROVIDER` is set) and stored in
+ * `document_chunks.embedding vector(1024)` for hybrid search (P5-006/007).
  */
 export class ProcessingService {
   private readonly repository: ProcessingRepository;
+  private readonly chunksRepository: DocumentChunksRepository;
+  private readonly chunker: Chunker;
+  private readonly embeddingProvider: EmbeddingProvider;
 
   constructor(
     private readonly pool: WorkerDbPool,
     private readonly storage: ObjectStorage,
     private readonly textExtractor: TextExtractor,
     private readonly ocrProvider: OCRProvider,
+    options?: {
+      embeddingProvider?: EmbeddingProvider;
+      chunker?: Chunker;
+      chunksRepository?: DocumentChunksRepository;
+    },
   ) {
     this.repository = new ProcessingRepository(pool);
+    this.chunksRepository = options?.chunksRepository ?? new DocumentChunksRepository(pool);
+    this.chunker = options?.chunker ?? createChunker();
+    this.embeddingProvider = options?.embeddingProvider ?? createEmbeddingProvider();
   }
 
   async processJob(data: JobData): Promise<void> {
@@ -79,13 +99,44 @@ export class ProcessingService {
       }
     }
 
-    await this.repository.updateProcessingResult(institutionId, versionId, {
-      text,
-      ocrStatus,
-      pageCount,
-    });
+    // Prepare chunks + embeddings before marking COMPLETED (so failure keeps PROCESSING for retry).
+    let preparedChunks: Array<{
+      page_number: number | null;
+      chunk_index: number;
+      content: string;
+      token_count: number;
+      embedding: number[] | null;
+      metadata: Record<string, unknown>;
+    }> | null = null;
 
-    if (text.trim().length > 0) {
+    const trimmed = text.trim();
+    if (trimmed.length > 0) {
+      const rawChunks = this.chunker.chunk({
+        text,
+        pages: extraction.pages.length > 0 ? extraction.pages : undefined,
+        pageCount,
+      });
+      if (rawChunks.length > 0) {
+        const chunkTexts = rawChunks.map((c) => c.content);
+        const embeddings = await this.embeddingProvider.embed(chunkTexts);
+        if (embeddings.length !== rawChunks.length) {
+          throw new Error(
+            `Embedding provider returned ${embeddings.length} vectors for ${rawChunks.length} chunks`,
+          );
+        }
+        preparedChunks = rawChunks.map((c, i) => ({
+          page_number: c.pageNumber,
+          chunk_index: c.chunkIndex,
+          content: c.content,
+          token_count: c.tokenCount,
+          embedding: embeddings[i] ?? null,
+          metadata: {},
+        }));
+      }
+    }
+
+    // Side effects before final status: storage + chunks (so retry can recover if they fail before COMPLETED).
+    if (trimmed.length > 0) {
       await this.storage.put({
         key: extractedTextKey({
           institutionId,
@@ -96,5 +147,20 @@ export class ProcessingService {
         contentType: 'text/plain',
       });
     }
+
+    // Replace chunks idempotently; delete first to handle reprocessing.
+    if (preparedChunks !== null) {
+      await this.chunksRepository.deleteByVersion(versionId);
+      await this.chunksRepository.createMany(versionId, preparedChunks);
+    } else {
+      // No text or no chunks -> ensure no stale chunks remain.
+      await this.chunksRepository.deleteByVersion(versionId);
+    }
+
+    await this.repository.updateProcessingResult(institutionId, versionId, {
+      text,
+      ocrStatus,
+      pageCount,
+    });
   }
 }
