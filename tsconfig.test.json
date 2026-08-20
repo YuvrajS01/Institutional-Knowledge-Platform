@@ -4,7 +4,10 @@
     "noEmit": true,
     "paths": {
       "@ikp/config": ["./packages/config/src/index.ts"],
-      "@ikp/shared": ["./packages/shared/src/index.ts"]
+      "@ikp/shared": ["./packages/shared/src/index.ts"],
+      "@ikp/processing": ["./packages/processing/src/index.ts"],
+      "@ikp/queue": ["./packages/queue/src/index.ts"],
+      "@ikp/storage": ["./packages/storage/src/index.ts"]
     }
   },
   "include": [
