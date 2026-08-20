@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { chunkDocument } from '@ikp/processing';
+import { chunkDocument, createMockEmbeddingProvider } from '@ikp/processing';
 import {
   registerPool,
   requireTestDatabaseUrl,
@@ -153,5 +153,36 @@ describe('DocumentChunksRepository', () => {
     const versionId = await createDocumentVersion(pool, identity.institutionId, identity.userId);
     const created = await repository.createMany(versionId, []);
     expect(created).toHaveLength(0);
+  });
+
+  it('stores and retrieves embeddings for chunks (P5-004)', async () => {
+    const versionId = await createDocumentVersion(pool, identity.institutionId, identity.userId);
+    const text = Array.from({ length: 20 }, () => 'Embedding test content for vector storage.').join(' ');
+    const chunks = chunkDocument({ text });
+    const provider = createMockEmbeddingProvider();
+    const embeddings = await provider.embed(chunks.map((c) => c.content));
+    const inputs = chunks.map((c, i) => ({
+      page_number: c.pageNumber,
+      chunk_index: c.chunkIndex,
+      content: c.content,
+      token_count: c.tokenCount,
+      embedding: embeddings[i]!,
+      metadata: {},
+    }));
+    const created = await repository.createMany(versionId, inputs);
+    expect(created).toHaveLength(chunks.length);
+    // Embedding is stored as pgvector string
+    expect(created[0]!.embedding).not.toBeNull();
+    expect(typeof created[0]!.embedding).toBe('string');
+    expect(created[0]!.embedding!.startsWith('[')).toBe(true);
+
+    const listed = await repository.listByVersion(versionId);
+    expect(listed).toHaveLength(chunks.length);
+    for (const row of listed) {
+      expect(row.embedding).not.toBeNull();
+      // Parse vector string and verify dimension 1024
+      const vec = JSON.parse(row.embedding!);
+      expect(vec).toHaveLength(1024);
+    }
   });
 });

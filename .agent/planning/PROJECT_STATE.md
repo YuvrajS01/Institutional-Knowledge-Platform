@@ -6,23 +6,23 @@
 
 ## Current Phase
 
-Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter done; Phase 3 remainder P1 tasks pending.
+Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P5-003** (Add local embedding adapter) — implementation complete on task branch `feat/P5-003-local-embedding-adapter`; PR pending human approval.
+**P5-004** (Generate/store embeddings) — implementation complete on task branch `feat/P5-004-generate-store-embeddings`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P5-003-local-embedding-adapter`
+`feat/P5-004-generate-store-embeddings`
 
 ## Overall Status
 
-`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), and P5-005 (PostgreSQL full-text search) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG (P5-004→) still pending.
+`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), and P5-005 (PostgreSQL full-text search) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG (P5-006→) still pending.
 
 ## Last Completed Task
 
-P5-003 (Add local embedding adapter) — `packages/processing/src/local-embedding-provider.ts` (Ollama `/api/embed` + OpenAI `/v1/embeddings` compatible, batching, zero-vector for empty, dimension validation, timeout via AbortController, env-driven factory) + `mock-embedding-provider.ts` factory switch (`EMBEDDING_PROVIDER` env: mock/local/ollama/http/openai/vllm) + 27 unit tests (modelName/dimensions, empty, batch, ollama/openai shapes, legacy single, batching, HTTP error, dimension mismatch, non-finite, normalize, endpoint resolution, factory switch); 247 tests passing.
+P5-004 (Generate/store embeddings) — `apps/api/src/modules/documents/document-chunks.repository.ts` (now stores `embedding vector(1024)` via `::vector` cast) + `apps/worker/src/processing/document-chunks.repository.ts` (worker-side `vector(1024)` persistence) + `apps/worker/src/processing/processing.service.ts` (chunk → `EmbeddingProvider.embed` → `deleteByVersion`/`createMany` with embeddings, storage put + chunk persist before `COMPLETED` for retry safety, tenant-aware, idempotent, page-aware) + `document-chunks.repository.test.ts` embedding integration test + `processing.embeddings.unit.test.ts` 7 unit tests (chunk+embed, empty, wrong count, idempotent, page-aware, vector formatting); 255 tests passing.
 
 ## What Is Working
 
@@ -42,19 +42,26 @@ P5-003 (Add local embedding adapter) — `packages/processing/src/local-embeddin
   - **`packages/processing/src/local-embedding-provider.test.ts`**: 27 unit tests (defaults, custom, invalid dims/batch, empty handling without fetch, single/batch order, Ollama/OpenAI/legacy shapes, batching, HTTP error, dimension mismatch, non-finite, unexpected shape, legacy single, endpoint resolution, normalize, factory switch via env).
   - `packages/processing/src/index.ts` re-exports `LocalEmbeddingProvider`.
   - `.env.example` updated with `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_BASE_URL`, `EMBEDDING_ENDPOINT`, `EMBEDDING_DIMENSIONS` documentation.
+- Generate/store embeddings (P5-004):
+  - **`apps/api/src/modules/documents/document-chunks.repository.ts`**: `createMany()` now persists `embedding vector(1024)` via `'[${embedding.join(',')}]'::vector` (null → `NULL::vector`), 7 params/row, `::vector` cast for pgvector; backward compatible for null embeddings (existing 7 integration tests still pass, plus new embedding round-trip test).
+  - **`apps/worker/src/processing/document-chunks.repository.ts`**: worker-side mirror (WorkerDbPool) with same `::vector` logic for pipeline use.
+  - **`apps/worker/src/processing/processing.service.ts`**: extended orchestration — after text extraction (and OCR), chunks via `chunker.chunk({text, pages, pageCount})` (page-aware, deterministic), embeds via `embeddingProvider.embed(chunkTexts)` (mock `mock-bge-m3` 1024 dims, L2-normalized; local `bge-m3` when `EMBEDDING_PROVIDER` set), then `storage.put(extracted.txt)` + `deleteByVersion`/`createMany` with embeddings before `updateProcessingResult(COMPLETED)` (retry-safe: failure keeps `PROCESSING` for retry; idempotent: `COMPLETED` early return, stale chunks deleted on reprocess).
+  - **`apps/api/src/modules/documents/document-chunks.repository.test.ts`**: added `stores and retrieves embeddings for chunks (P5-004)` — creates chunks, embeds via `createMockEmbeddingProvider`, inserts with `embedding`, asserts `embedding` string `'['` and `JSON.parse` 1024 dims.
+  - **`apps/worker/src/processing/processing.embeddings.unit.test.ts`**: 7 unit tests (chunk+embed, empty→0 chunks+delete, wrong count throws, idempotent COMPLETED no re-embed, page-aware, vector formatting `::vector`, null).
+  - `processing.repository.ts` / `processing.service.test.ts` unchanged (integration still passes via pgvector).
 - Prior chunk storage (P5-001):
-  - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 7 integration tests.
+  - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
   - **`packages/processing` chunker** — deterministic, 500/75/700/100, paragraph→sentence→line, page-aware, overlap, Hindi support.
 - Prior metadata interface (P3-005):
   - **`MetadataExtractor` contract** with Zod validation, `HeuristicMetadataExtractor` baseline.
 - Prior processing orchestration (P3-004):
-  - **Worker pipeline**: `document.process` job → tenant-scoped version lookup → download original → text extraction → OCR when inadequate → persist `extracted_text`/`ocr_status`/`page_count`/`processing_status` → write `extracted.txt` artifact (idempotent, tenant-aware, retryable).
+  - **Worker pipeline**: `document.process` job → tenant-scoped version lookup → download original → text extraction → OCR when inadequate → persist `extracted_text`/`ocr_status`/`page_count`/`processing_status` → write `extracted.txt` artifact + chunk/embed (idempotent, tenant-aware, retryable).
 
 ## What Is Not Implemented
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
-- Search remainder: generate/store embeddings (P5-004), vector search (P5-006), hybrid (P5-007), search API (P5-009), etc.
+- Search remainder: vector search (P5-006), hybrid (P5-007), search API (P5-009), etc.
 - Phases 4, 6–10.
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
@@ -76,10 +83,10 @@ P5-003 (Add local embedding adapter) — `packages/processing/src/local-embeddin
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 (PR #26). Task branch `feat/P5-003-local-embedding-adapter` adds local embedding adapter, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 (PR #27). Task branch `feat/P5-004-generate-store-embeddings` adds generate/store embeddings, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (247, +27 local adapter)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (255, +8 embedding store)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -105,7 +112,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (247) |
+| Unit/integration tests | PASS (255) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -125,9 +132,10 @@ When switching AI tools/models:
 | Processing pipeline (live: upload → enqueue → extract → COMPLETED) | PASS |
 | Metadata extraction interface (heuristic + Zod) | PASS (20) |
 | Chunking (deterministic, 500/75, page-aware) | PASS (20) |
-| Document chunk storage (pgvector `vector(1024)` + repo) | PASS (7) |
+| Document chunk storage (pgvector `vector(1024)` + repo) | PASS (8) |
 | Embedding provider interface (mock, deterministic) | PASS (13) |
 | Local embedding adapter (Ollama/OpenAI, batching, env factory) | PASS (27) |
+| Generate/store embeddings (chunk → embed → pgvector) | PASS (8) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -136,7 +144,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P5-003 merges, start **P5-004** (Generate/store embeddings — P0) or **P4-001** (Implement review queue API — P0) or **P5-006** (Implement vector search — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P5-004 merges, start **P5-006** (Implement vector search — P0) or **P4-001** (Implement review queue API — P0) or **P4-003** (Implement supersession/version APIs — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 

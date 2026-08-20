@@ -1,4 +1,4 @@
-import type { DbPool } from '../../infrastructure/db/db-pool.js';
+import type { WorkerDbPool } from '../db-pool.js';
 
 export interface ChunkRow {
   id: string;
@@ -22,18 +22,16 @@ export interface CreateChunkInput {
 }
 
 /**
- * Tenant-agnostic chunk persistence — tenant scope is enforced via the
- * version → document → institution join by callers (like processing pipeline).
- * Chunks themselves are version-owned; no direct institution_id column.
+ * Chunk persistence for the worker (mirrors API repository but uses WorkerDbPool).
+ * Embedding is stored as pgvector `vector(1024)` — P5-004 populates it.
  */
 export class DocumentChunksRepository {
-  constructor(private readonly pool: DbPool) {}
+  constructor(private readonly pool: WorkerDbPool) {}
 
   async createMany(documentVersionId: string, inputs: CreateChunkInput[]): Promise<ChunkRow[]> {
     if (inputs.length === 0) {
       return [];
     }
-    // Build a single INSERT with multiple rows for efficiency.
     const values: unknown[] = [];
     const rowsSql = inputs
       .map((input, idx) => {
@@ -49,7 +47,6 @@ export class DocumentChunksRepository {
           embeddingValue,
           input.metadata ?? {},
         );
-        // pgvector column accepts string "[0,0,...]" or null; use ::vector cast for parameterized value
         return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}::vector, $${base + 7})`;
       })
       .join(', ');
@@ -61,7 +58,7 @@ export class DocumentChunksRepository {
        RETURNING id, document_version_id, page_number, chunk_index, content, token_count, embedding, metadata, created_at`,
       values,
     );
-    return result.rows as ChunkRow[];
+    return result.rows as unknown as ChunkRow[];
   }
 
   async listByVersion(documentVersionId: string): Promise<ChunkRow[]> {
@@ -72,7 +69,7 @@ export class DocumentChunksRepository {
        ORDER BY chunk_index ASC`,
       [documentVersionId],
     );
-    return result.rows as ChunkRow[];
+    return result.rows as unknown as ChunkRow[];
   }
 
   async deleteByVersion(documentVersionId: string): Promise<void> {
