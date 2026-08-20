@@ -18,11 +18,17 @@ export interface HybridSearchOptions {
 export interface HybridSearchResult {
   document_id: string;
   title: string;
+  /** Alias for API spec `document_title`; kept as `title` for backward compat. */
+  document_title: string;
   slug: string;
   document_type: DocumentType;
   status: DocumentStatus;
   department_id: string | null;
   published_at: Date | null;
+  /** Version that produced the chunk (vector) or current_version_id (lexical). */
+  version_id: string;
+  chunk_id: string | null;
+  page_number: number | null;
   lexical_score: number;
   semantic_score: number;
   hybrid_score: number;
@@ -109,7 +115,10 @@ export class HybridSearchService {
     ]);
 
     // Aggregate vector chunks to document-level max similarity
-    const semanticByDoc = new Map<string, { similarity: number; chunk: (typeof vectorChunks)[number] }>();
+    const semanticByDoc = new Map<
+      string,
+      { similarity: number; chunk: (typeof vectorChunks)[number] }
+    >();
     for (const chunk of vectorChunks) {
       const existing = semanticByDoc.get(chunk.document_id);
       if (!existing || chunk.similarity > existing.similarity) {
@@ -121,7 +130,8 @@ export class HybridSearchService {
     const candidates = new Map<string, HybridSearchResult>();
 
     const maxLexical = Math.max(...lexicalResults.map((r) => r.lexical_score), 0) || 1;
-    const maxSemantic = Math.max(...Array.from(semanticByDoc.values()).map((v) => v.similarity), 0) || 1;
+    const maxSemantic =
+      Math.max(...Array.from(semanticByDoc.values()).map((v) => v.similarity), 0) || 1;
 
     // Add lexical candidates
     for (const doc of lexicalResults) {
@@ -129,14 +139,24 @@ export class HybridSearchService {
       const semanticEntry = semanticByDoc.get(doc.id);
       const normSemantic = semanticEntry ? semanticEntry.similarity / maxSemantic : 0;
       const hybrid = lexicalWeight * normLexical + semanticWeight * normSemantic;
+      const versionId =
+        semanticEntry?.chunk.version_id ??
+        (doc as { version_id?: string | null }).version_id ??
+        doc.id;
+      const chunkId = semanticEntry?.chunk.chunk_id ?? null;
+      const pageNumber = semanticEntry?.chunk.page_number ?? null;
       candidates.set(doc.id, {
         document_id: doc.id,
         title: doc.title,
+        document_title: doc.title,
         slug: doc.slug,
         document_type: doc.document_type,
         status: doc.status,
         department_id: doc.department_id,
         published_at: doc.published_at,
+        version_id: versionId,
+        chunk_id: chunkId,
+        page_number: pageNumber,
         lexical_score: doc.lexical_score,
         semantic_score: semanticEntry?.similarity ?? 0,
         hybrid_score: hybrid,
@@ -155,11 +175,15 @@ export class HybridSearchService {
       candidates.set(docId, {
         document_id: docId,
         title: entry.chunk.document_title,
+        document_title: entry.chunk.document_title,
         slug: entry.chunk.document_slug,
         document_type: entry.chunk.document_type,
         status: entry.chunk.document_status,
         department_id: entry.chunk.department_id,
         published_at: entry.chunk.published_at,
+        version_id: entry.chunk.version_id,
+        chunk_id: entry.chunk.chunk_id,
+        page_number: entry.chunk.page_number,
         lexical_score: 0,
         semantic_score: entry.similarity,
         hybrid_score: hybrid,

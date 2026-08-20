@@ -6,7 +6,9 @@ import { HybridSearchService } from './hybrid-search.service.js';
 
 describe('HybridSearchService (P5-007) — unit', () => {
   it('merges lexical and vector candidates and ranks hybrid', async () => {
-    const pool = { query: vi.fn() } as unknown as ConstructorParameters<typeof HybridSearchService>[0];
+    const pool = { query: vi.fn() } as unknown as ConstructorParameters<
+      typeof HybridSearchService
+    >[0];
     const embeddingProvider = createMockEmbeddingProvider();
 
     const lexicalDocs = [
@@ -19,6 +21,7 @@ describe('HybridSearchService (P5-007) — unit', () => {
         department_id: null,
         published_at: new Date('2026-08-10T00:00:00Z'),
         lexical_score: 0.8,
+        version_id: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',
       },
       {
         id: 'doc-both',
@@ -29,6 +32,7 @@ describe('HybridSearchService (P5-007) — unit', () => {
         department_id: null,
         published_at: new Date('2026-08-12T00:00:00Z'),
         lexical_score: 0.5,
+        version_id: 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb',
       },
     ];
 
@@ -41,6 +45,7 @@ describe('HybridSearchService (P5-007) — unit', () => {
         document_status: 'PUBLISHED' as const,
         department_id: null,
         published_at: new Date('2026-08-11T00:00:00Z'),
+        version_id: 'cccccccc-cccc-4ccc-cccc-cccccccccccc',
         chunk_id: 'c1',
         chunk_index: 0,
         page_number: 1,
@@ -57,6 +62,7 @@ describe('HybridSearchService (P5-007) — unit', () => {
         document_status: 'PUBLISHED' as const,
         department_id: null,
         published_at: new Date('2026-08-12T00:00:00Z'),
+        version_id: 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb',
         chunk_id: 'c2',
         chunk_index: 0,
         page_number: 1,
@@ -69,10 +75,14 @@ describe('HybridSearchService (P5-007) — unit', () => {
 
     const documentsRepository = {
       lexicalSearch: vi.fn(async () => lexicalDocs),
-    } as unknown as ConstructorParameters<typeof HybridSearchService>[0] extends never ? never : never;
+    } as unknown as ConstructorParameters<typeof HybridSearchService>[0] extends never
+      ? never
+      : never;
     const vectorRepository = {
       searchByEmbedding: vi.fn(async () => vectorChunks),
-    } as unknown as ConstructorParameters<typeof HybridSearchService>[0] extends never ? never : never;
+    } as unknown as ConstructorParameters<typeof HybridSearchService>[0] extends never
+      ? never
+      : never;
 
     const service = new HybridSearchService(pool as never, {
       embeddingProvider,
@@ -101,13 +111,19 @@ describe('HybridSearchService (P5-007) — unit', () => {
   });
 
   it('throws for empty query', async () => {
-    const pool = { query: vi.fn() } as unknown as ConstructorParameters<typeof HybridSearchService>[0];
+    const pool = { query: vi.fn() } as unknown as ConstructorParameters<
+      typeof HybridSearchService
+    >[0];
     const service = new HybridSearchService(pool);
-    await expect(service.search('00000000-0000-4000-a000-000000000001', '   ')).rejects.toThrow(/non-empty/);
+    await expect(service.search('00000000-0000-4000-a000-000000000001', '   ')).rejects.toThrow(
+      /non-empty/,
+    );
   });
 
   it('returns vector-only results when lexical is empty', async () => {
-    const pool = { query: vi.fn() } as unknown as ConstructorParameters<typeof HybridSearchService>[0];
+    const pool = { query: vi.fn() } as unknown as ConstructorParameters<
+      typeof HybridSearchService
+    >[0];
     const embeddingProvider = createMockEmbeddingProvider();
     const documentsRepository = { lexicalSearch: vi.fn(async () => []) } as never;
     const vectorRepository = {
@@ -120,6 +136,7 @@ describe('HybridSearchService (P5-007) — unit', () => {
           document_status: 'PUBLISHED' as const,
           department_id: null,
           published_at: null,
+          version_id: 'dddddddd-dddd-4ddd-dddd-dddddddddddd',
           chunk_id: 'c1',
           chunk_index: 0,
           page_number: 1,
@@ -143,7 +160,9 @@ describe('HybridSearchService (P5-007) — unit', () => {
   });
 
   it('exposes modelName and dimensions', () => {
-    const pool = { query: vi.fn() } as unknown as ConstructorParameters<typeof HybridSearchService>[0];
+    const pool = { query: vi.fn() } as unknown as ConstructorParameters<
+      typeof HybridSearchService
+    >[0];
     const provider = createMockEmbeddingProvider({ modelName: 'custom', dimensions: 384 });
     const service = new HybridSearchService(pool as never, { embeddingProvider: provider });
     expect(service.modelName()).toBe('custom');

@@ -5,8 +5,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { chunkDocument, createMockEmbeddingProvider } from '@ikp/processing';
 
-import { registerPool, requireTestDatabaseUrl } from '../../../../../tests/integration/helpers/db.js';
-import { seedInstitutionWithUsers, type SeedIdentity } from '../../../../../tests/integration/helpers/seed.js';
+import {
+  registerPool,
+  requireTestDatabaseUrl,
+} from '../../../../../tests/integration/helpers/db.js';
+import {
+  seedInstitutionWithUsers,
+  type SeedIdentity,
+} from '../../../../../tests/integration/helpers/seed.js';
 
 import { DocumentChunksRepository } from '../documents/document-chunks.repository.js';
 import { RagAnswerService } from './rag-answer.service.js';
@@ -86,6 +92,12 @@ describe('RagAnswerService (P8-006) — integration', () => {
     expect(result.answer).toContain('18 August 2026');
     expect(result.citations.length).toBeGreaterThan(0);
     expect(result.citations[0]!.document_id).toBe(docId);
+    // P8-007: citation contract — spec shape
+    expect(result.citations[0]!.document_title).toBe(title);
+    expect(result.citations[0]!.version_id).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(result.citations[0]!.page).toBeDefined();
+    // legacy alias still present
+    expect((result.citations[0]! as unknown as Record<string, unknown>).title).toBe(title);
   });
 
   it('returns unsupported answer when no documents match', async () => {
@@ -97,7 +109,9 @@ describe('RagAnswerService (P8-006) — integration', () => {
 
     expect(result.grounded).toBe(false);
     expect(result.confidence).toBe('low');
-    expect(result.answer).toBe("I couldn't find an official institutional document confirming this.");
+    expect(result.answer).toBe(
+      "I couldn't find an official institutional document confirming this.",
+    );
     expect(result.citations).toHaveLength(0);
   });
 
@@ -123,8 +137,10 @@ describe('RagAnswerService (P8-006) — integration', () => {
     // Should not be grounded with other tenant's doc, or if grounded, citations should not include other tenant's doc
     for (const c of result.citations) {
       expect(c.document_id).not.toBeUndefined();
+      expect(c.version_id).toMatch(/^[0-9a-f-]{36}$/i);
       // Ensure no citation is from other tenant — we can't directly check institution, but we can ensure the other title not in citations
-      expect(c.title).not.toBe(title);
+      expect(c.document_title).not.toBe(title);
+      expect((c as unknown as Record<string, unknown>).title).not.toBe(title);
     }
   });
 });

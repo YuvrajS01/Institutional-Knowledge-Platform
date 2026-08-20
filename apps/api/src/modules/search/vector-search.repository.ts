@@ -19,6 +19,7 @@ export interface VectorSearchResult {
   document_status: DocumentStatus;
   department_id: string | null;
   published_at: Date | null;
+  version_id: string;
   chunk_id: string;
   chunk_index: number;
   page_number: number | null;
@@ -103,6 +104,7 @@ export class VectorSearchRepository extends TenantRepository {
         d.status AS document_status,
         d.department_id,
         d.published_at,
+        c.document_version_id AS version_id,
         c.id AS chunk_id,
         c.chunk_index,
         c.page_number,
@@ -132,6 +134,7 @@ function mapRow(row: Record<string, unknown>): VectorSearchResult {
     document_status: row.document_status as DocumentStatus,
     department_id: (row.department_id as string | null) ?? null,
     published_at: (row.published_at as Date | null) ?? null,
+    version_id: row.version_id as string,
     chunk_id: row.chunk_id as string,
     chunk_index: Number(row.chunk_index),
     page_number: (row.page_number as number | null) ?? null,

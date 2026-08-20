@@ -1,4 +1,5 @@
 import type { HybridSearchResult } from '../search/hybrid-search.service.js';
+import type { Citation } from './citation.js';
 
 export interface ContextBuilderOptions {
   maxTokens?: number;
@@ -8,12 +9,7 @@ export interface ContextBuilderOptions {
 export interface BuiltContext {
   systemPrompt: string;
   userPrompt: string;
-  citations: Array<{
-    document_id: string;
-    title: string;
-    chunk_id?: string;
-    page_number: number | null;
-  }>;
+  citations: Citation[];
   tokenEstimate: number;
 }
 
@@ -87,18 +83,23 @@ export class ContextBuilderService {
       selected.push(retrieved[0]!);
     }
 
-    const citations = selected.map((doc) => ({
+    const citations: Citation[] = selected.map((doc) => ({
       document_id: doc.document_id,
-      title: doc.title,
-      chunk_id: (doc as unknown as { chunk_id?: string }).chunk_id,
-      page_number: (doc as unknown as { page_number?: number | null }).page_number ?? null,
+      document_title: doc.document_title ?? doc.title,
+      version_id: doc.version_id,
+      page: doc.page_number ?? null,
+      chunk_id: doc.chunk_id ?? undefined,
+      title: doc.document_title ?? doc.title,
+      page_number: doc.page_number ?? null,
     }));
 
     const contextBlocks = selected.map((doc, idx) => {
       const n = idx + 1;
       const content = (doc as unknown as { content?: string }).content ?? '';
       const snippet = content ? `\nContent: ${content.slice(0, 800)}` : '';
-      return `[${n}] ${doc.title} (ID: ${doc.document_id}${doc.department_id ? `, Dept: ${doc.department_id}` : ''})${snippet}\nScore: ${doc.hybrid_score.toFixed(3)} (${doc.match_reasons.join(', ')})`;
+      const citation = citations[idx]!;
+      // Spec-compliant citation line: includes version and page for traceability
+      return `[${n}] ${doc.title} (ID: ${doc.document_id}, Version: ${citation.version_id}${citation.page ? `, Page: ${citation.page}` : ''}${doc.department_id ? `, Dept: ${doc.department_id}` : ''})${snippet}\nScore: ${doc.hybrid_score.toFixed(3)} (${doc.match_reasons.join(', ')})`;
     });
 
     const userPrompt = [
