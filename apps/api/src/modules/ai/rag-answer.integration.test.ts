@@ -81,29 +81,6 @@ describe('RagAnswerService (P8-006) — integration', () => {
       { limit: 5 },
     );
 
-    // Debug: also check what retrieval and context builder would do directly
-    const { PermissionAwareRetrievalService } = await import('../search/permission-aware-retrieval.service.js');
-    const retrieval = new PermissionAwareRetrievalService(pool);
-    const directRetrieved = await retrieval.retrieve(
-      { institutionId, userId: student.userId, role: 'STUDENT' },
-      query,
-      { limit: 5 },
-    );
-    const { ContextBuilderService: CB } = await import('./context-builder.service.js');
-    const { createMockLLMProvider: createMock } = await import('@ikp/processing');
-    const contextBuilder = new CB();
-    const built = contextBuilder.build(query, directRetrieved as unknown as never);
-    const mockLLM = createMock();
-    const llmDirect = await mockLLM.generate({ prompt: built.userPrompt, systemPrompt: built.systemPrompt });
-    console.error('RAG DEBUG directRetrieved:', JSON.stringify(directRetrieved.map((r: { document_id: string; title: string; hybrid_score: number }) => ({ id: r.document_id, title: r.title, score: r.hybrid_score })), null, 2));
-    console.error('RAG DEBUG built:', JSON.stringify({ systemPrompt: built.systemPrompt.slice(0, 200), userPrompt: built.userPrompt.slice(0, 500), citations: built.citations }, null, 2));
-    console.error('RAG DEBUG llmDirect:', JSON.stringify(llmDirect, null, 2));
-
-    // Debug: throw to force vitest to show the result in the failure output
-    if (!result.grounded) {
-      throw new Error(`RAG NOT GROUNDED DEBUG: ${JSON.stringify({ result, docId, title, query, directRetrieved: directRetrieved.length, builtCitations: built.citations.length, llmDirect }, null, 2)}`);
-    }
-
     expect(result.grounded).toBe(true);
     expect(result.confidence).toBe('high');
     expect(result.answer).toContain('18 August 2026');
