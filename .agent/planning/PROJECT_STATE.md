@@ -6,23 +6,23 @@
 
 ## Current Phase
 
-Phase 4 (Publishing) — review queue + supersession/version APIs done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
+Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P4-003** (Implement supersession/version APIs) — implementation complete on task branch `feat/P4-003-supersession-version-apis`; PR pending human approval.
+**P4-006** (Add publication permission tests) — implementation complete on task branch `feat/P4-006-publication-permission-tests`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P4-003-supersession-version-apis`
+`feat/P4-006-publication-permission-tests`
 
 ## Overall Status
 
-`PHASE_4_IN_PROGRESS` — P4-001 (review queue API) and P4-003 (supersession/version APIs) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 4/6/8 (P4-002→, P6-001→, P8-001→) still pending.
+`PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 4/6/8 (P4-004/005→, P6-001→, P8-001→) still pending.
 
 ## Last Completed Task
 
-P4-003 (Implement supersession/version APIs) — `infra/migrations/1787235000000_add-superseded-by-to-documents.js` (`superseded_by_document_id` uuid FK `SET NULL`, `superseded_reason` text, `superseded_at` timestamptz, index) + `apps/api/src/modules/documents/documents.repository.ts` (`DocumentRow` + `superseded_*`, `SELECT_COLUMNS`, `mapDocumentRow`, `supersede` method with `status='SUPERSEDED'`) + `document-versions.repository.ts` (`listByDocumentId`) + `documents.service.ts` (`supersede` with `document.publish` guard, `PUBLISHED` check, self-check, `canTransitionDocument`, audit `document.superseded`; `listVersions` with `current_version_id` `is_current`) + `documents.route.ts` (`POST /documents/:id/supersede` with `guard('document.publish')`, `60/min`, Zod `superseded_by_document_id` uuid+`reason`, `GET /documents/:id/versions` with `requireMember`) + `document-supersession.route.test.ts` 9 integration tests (supersede PUBLISHED→SUPERSEDED, non-PUBLISHED 409, self 409, student 403, tenant isolation, uuid validation, versions list ordered, 404, tenant isolation); 305 tests passing.
+P4-006 (Add publication permission tests) — `apps/api/src/modules/documents/document-publication-permission.route.test.ts` 8 integration tests (student/faculty cannot approve/publish, deptAdmin cannot, approver/admin can, student visibility PUBLISHED only, student list only PUBLISHED, superseded not in student list/search, cross-tenant 404, search draft/superceded hidden); `305 → 313` tests passing (lint/typecheck/build green).
 
 ## What Is Working
 
@@ -85,6 +85,8 @@ P4-003 (Implement supersession/version APIs) — `infra/migrations/1787235000000
   - **`apps/api/src/modules/documents/documents.service.ts`**: `supersede` (requires `document.publish`, `PUBLISHED` check, self-check, `canTransitionDocument`, audit `document.superseded`), `listVersions` (with `is_current`).
   - **`apps/api/src/modules/documents/documents.route.ts`**: `POST /documents/:id/supersede` (`guard('document.publish')`, Zod `superseded_by_document_id` uuid+`reason`, 60/min) + `GET /documents/:id/versions` (`requireMember`, tenant-scoped).
   - **`apps/api/src/modules/documents/document-supersession.route.test.ts`**: 9 integration tests (supersede PUBLISHED→SUPERSEDED, non-PUBLISHED 409, self 409, student 403, tenant isolation, uuid validation, versions list ordered `is_current`, 404, tenant isolation).
+- Publication permission tests (P4-006):
+  - **`apps/api/src/modules/documents/document-publication-permission.route.test.ts`**: 8 integration tests (student/faculty cannot approve/publish, deptAdmin cannot, approver/admin can, student visibility PUBLISHED only, student list only PUBLISHED, superseded not in student list/search, cross-tenant 404, search draft/superceded hidden).
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
@@ -98,7 +100,7 @@ P4-003 (Implement supersession/version APIs) — `infra/migrations/1787235000000
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
 - Search remainder: reranker (P5-008), filters/facets (P5-011), search analytics (P5-012), etc.
-- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), publication permission tests (P4-006), etc., and Phases 6–10.
+- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), etc., and Phases 6–10.
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
 ## Active Blockers
@@ -119,10 +121,10 @@ P4-003 (Implement supersession/version APIs) — `infra/migrations/1787235000000
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 (PR #34). Task branch `feat/P4-003-supersession-version-apis` adds supersession/version APIs, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 + P4-003 (PR #35). Task branch `feat/P4-006-publication-permission-tests` adds publication permission tests, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (305, +9 supersession)  build ✅ (9/9)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (313, +8 publication)  build ✅ (9/9)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -148,7 +150,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (305) |
+| Unit/integration tests | PASS (313) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -179,6 +181,7 @@ When switching AI tools/models:
 | Search evaluation set (Recall@5/10, MRR, NDCG) | PASS (6) |
 | Review queue API (IN_REVIEW, RBAC, tenant) | PASS (6) |
 | Supersession/version APIs (SUPERSEDED, versions) | PASS (9) |
+| Publication permission tests (PUBLISHED, SUPERSEDED, search) | PASS (8) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -187,7 +190,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P4-003 merges, start **P4-006** (Add publication permission tests — P0) or **P8-001** (Create LLM provider interface — P0) or **P4-002** (Implement approve/publish APIs — P0, already implemented via lifecycle, may be marked DONE) or **P6-001** (Build document detail API — P0, now unblocked as P4-003 done). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P4-006 merges, start **P8-001** (Create LLM provider interface — P0) or **P6-001** (Build document detail API — P0, now unblocked as P4-003 done) or **P4-004** (Build approval queue UI — P1). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 
