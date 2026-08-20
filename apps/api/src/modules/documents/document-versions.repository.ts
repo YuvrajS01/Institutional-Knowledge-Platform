@@ -118,4 +118,16 @@ export class DocumentVersionsRepository extends TenantRepository {
     const row = result.rows[0];
     return row ? mapVersionRow(row as Record<string, unknown>) : null;
   }
+
+  async listByDocumentId(institutionId: string, documentId: string): Promise<DocumentVersionRow[]> {
+    const tenantId = this.tenantId(institutionId);
+    const result = await this.pool.query(
+      `SELECT ${SELECT_COLUMNS_PREFIXED} FROM document_versions v
+       JOIN documents d ON d.id = v.document_id
+       WHERE v.document_id = $2 AND ${this.tenantCondition('d', 1)}
+       ORDER BY v.version_number ASC`,
+      [tenantId, documentId],
+    );
+    return result.rows.map((row) => mapVersionRow(row as Record<string, unknown>));
+  }
 }

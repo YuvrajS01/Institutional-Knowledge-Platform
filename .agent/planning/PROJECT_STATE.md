@@ -6,30 +6,30 @@
 
 ## Current Phase
 
-Phase 4 (Publishing) — review queue done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
+Phase 4 (Publishing) — review queue + supersession/version APIs done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P4-001** (Implement review queue API) — implementation complete on task branch `feat/P4-001-review-queue-api`; PR pending human approval.
+**P4-003** (Implement supersession/version APIs) — implementation complete on task branch `feat/P4-003-supersession-version-apis`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P4-001-review-queue-api`
+`feat/P4-003-supersession-version-apis`
 
 ## Overall Status
 
-`PHASE_4_IN_PROGRESS` — P4-001 (review queue API) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 4/6/8 (P4-003→, P8-001→) still pending.
+`PHASE_4_IN_PROGRESS` — P4-001 (review queue API) and P4-003 (supersession/version APIs) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 4/6/8 (P4-002→, P6-001→, P8-001→) still pending.
 
 ## Last Completed Task
 
-P4-001 (Implement review queue API) — `apps/api/src/modules/documents/documents.service.ts` (`list` now enforces RBAC for `status` filter: non-PUBLISHED requires `document.approve`/`publish`; `reviewQueue` method requires `document.approve`) + `apps/api/src/modules/documents/documents.route.ts` (`GET /documents/review-queue` with `guard('document.approve')`, `60/min` rate limit, `reviewQueueQuerySchema` (omit `status`), delegates to `service.reviewQueue` which lists `IN_REVIEW` with tenant scoping) + `document-review-queue.route.test.ts` 6 integration tests (approver list, student 403, tenant isolation, search filter, student list IN_REVIEW 403, approver list IN_REVIEW 200); 296 tests passing.
+P4-003 (Implement supersession/version APIs) — `infra/migrations/1787235000000_add-superseded-by-to-documents.js` (`superseded_by_document_id` uuid FK `SET NULL`, `superseded_reason` text, `superseded_at` timestamptz, index) + `apps/api/src/modules/documents/documents.repository.ts` (`DocumentRow` + `superseded_*`, `SELECT_COLUMNS`, `mapDocumentRow`, `supersede` method with `status='SUPERSEDED'`) + `document-versions.repository.ts` (`listByDocumentId`) + `documents.service.ts` (`supersede` with `document.publish` guard, `PUBLISHED` check, self-check, `canTransitionDocument`, audit `document.superseded`; `listVersions` with `current_version_id` `is_current`) + `documents.route.ts` (`POST /documents/:id/supersede` with `guard('document.publish')`, `60/min`, Zod `superseded_by_document_id` uuid+`reason`, `GET /documents/:id/versions` with `requireMember`) + `document-supersession.route.test.ts` 9 integration tests (supersede PUBLISHED→SUPERSEDED, non-PUBLISHED 409, self 409, student 403, tenant isolation, uuid validation, versions list ordered, 404, tenant isolation); 305 tests passing.
 
 ## What Is Working
 
 - Everything from Phases 0–2 + P3-001..P5-001 (merged into `main` via PRs #1–#24).
 - Full-text search (P5-005):
   - **`infra/migrations/1787232000000_add-document-search-vector.js`**: `documents.search_vector tsvector` + trigger `documents_search_vector_update()` (weighted A title / B slug / C document_type) + GIN index `documents_search_vector_idx` + backfill for existing rows; down-migration drops trigger/function/index/column.
-  - **`apps/api/src/modules/documents/documents.repository.ts`**: `list()` search now uses `d.search_vector @@ plainto_tsquery('english', $n) OR d.title ILIKE $m` and, when searching, orders by `ts_rank(d.search_vector, plainto_tsquery(...)) DESC, d.created_at DESC` (relevance + recency). Non-search listings unchanged. **P5-007 adds `lexicalSearch(institutionId, query, {limit, statuses, department_id, document_type})` returning `DocumentListItem & {lexical_score}` via `ts_rank(d.search_vector, plainto_tsquery('english', $n))` ordered `lexical_score DESC`. **P4-001 adds `visibleStatusesForRole` RBAC for `status` filter and `lexicalSearch` for hybrid.
+  - **`apps/api/src/modules/documents/documents.repository.ts`**: `list()` search now uses `d.search_vector @@ plainto_tsquery('english', $n) OR d.title ILIKE $m` and, when searching, orders by `ts_rank(d.search_vector, plainto_tsquery(...)) DESC, d.created_at DESC` (relevance + recency). Non-search listings unchanged. **P5-007 adds `lexicalSearch(institutionId, query, {limit, statuses, department_id, document_type})` returning `DocumentListItem & {lexical_score}` via `ts_rank(d.search_vector, plainto_tsquery('english', $n))` ordered `lexical_score DESC`. **P4-001 adds `visibleStatusesForRole` RBAC for `status` filter and `lexicalSearch` for hybrid. **P4-003 adds `superseded_by_document_id`/`superseded_reason`/`superseded_at` + `supersede` + `SELECT_COLUMNS`.
   - **`apps/api/src/modules/documents/documents.route.test.ts`**: 4 new FTS tests — stemmed term match (`schedules` → `Holiday Schedule`), token-order independence (`fare refund`), title relevance ranking (double-token title outranks), and search_vector trigger sync on title update.
 - Embedding provider interface (P5-002):
   - **`packages/processing/src/embedding.ts`**: `EmbeddingProvider` contract (`modelName()`, `dimensions()`, `embed(texts: string[]): Promise<number[][]>`) — provider-agnostic (ADR-003/007) for `vector(1024)` chunks (TECHNICAL_SPEC §10, AI_LLM_ARCHITECTURE §7/§18, IMPLEMENTATION_GUIDE §5).
@@ -78,6 +78,13 @@ P4-001 (Implement review queue API) — `apps/api/src/modules/documents/document
   - **`apps/api/src/modules/documents/documents.service.ts`**: `list` now enforces RBAC for `status` filter (non-PUBLISHED requires `document.approve`/`publish`), `reviewQueue` method requires `document.approve` and delegates to `list` with `IN_REVIEW`.
   - **`apps/api/src/modules/documents/documents.route.ts`**: `GET /documents/review-queue` with `guard('document.approve')`, `60/min` rate limit, `reviewQueueQuerySchema` (omit `status`), delegates to `service.reviewQueue`.
   - **`apps/api/src/modules/documents/document-review-queue.route.test.ts`**: 6 integration tests (approver list, student 403, tenant isolation, search filter, student list IN_REVIEW 403, approver list IN_REVIEW 200).
+- Supersession/version APIs (P4-003):
+  - **`infra/migrations/1787235000000_add-superseded-by-to-documents.js`**: `superseded_by_document_id` uuid FK `SET NULL`, `superseded_reason` text, `superseded_at` timestamptz, index.
+  - **`apps/api/src/modules/documents/documents.repository.ts`**: `DocumentRow` + `superseded_*`, `SELECT_COLUMNS`, `mapDocumentRow`, `supersede` method (`status='SUPERSEDED'`).
+  - **`apps/api/src/modules/documents/document-versions.repository.ts`**: `listByDocumentId` ordered `version_number ASC`.
+  - **`apps/api/src/modules/documents/documents.service.ts`**: `supersede` (requires `document.publish`, `PUBLISHED` check, self-check, `canTransitionDocument`, audit `document.superseded`), `listVersions` (with `is_current`).
+  - **`apps/api/src/modules/documents/documents.route.ts`**: `POST /documents/:id/supersede` (`guard('document.publish')`, Zod `superseded_by_document_id` uuid+`reason`, 60/min) + `GET /documents/:id/versions` (`requireMember`, tenant-scoped).
+  - **`apps/api/src/modules/documents/document-supersession.route.test.ts`**: 9 integration tests (supersede PUBLISHED→SUPERSEDED, non-PUBLISHED 409, self 409, student 403, tenant isolation, uuid validation, versions list ordered `is_current`, 404, tenant isolation).
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
@@ -91,7 +98,7 @@ P4-001 (Implement review queue API) — `apps/api/src/modules/documents/document
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
 - Search remainder: reranker (P5-008), filters/facets (P5-011), search analytics (P5-012), etc.
-- Phases 4 remainder: supersession/version APIs (P4-003), etc., and Phases 6–10.
+- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), publication permission tests (P4-006), etc., and Phases 6–10.
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
 ## Active Blockers
@@ -112,10 +119,10 @@ P4-001 (Implement review queue API) — `apps/api/src/modules/documents/document
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 (PR #33). Task branch `feat/P4-001-review-queue-api` adds review queue API, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 (PR #34). Task branch `feat/P4-003-supersession-version-apis` adds supersession/version APIs, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (296, +6 review queue)  build ✅ (9/9)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (305, +9 supersession)  build ✅ (9/9)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -141,7 +148,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (296) |
+| Unit/integration tests | PASS (305) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -171,6 +178,7 @@ When switching AI tools/models:
 | Search results UI (hybrid, filters, pagination, empty) | PASS (build 9/9) |
 | Search evaluation set (Recall@5/10, MRR, NDCG) | PASS (6) |
 | Review queue API (IN_REVIEW, RBAC, tenant) | PASS (6) |
+| Supersession/version APIs (SUPERSEDED, versions) | PASS (9) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -179,7 +187,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P4-001 merges, start **P4-003** (Implement supersession/version APIs — P0) or **P8-001** (Create LLM provider interface — P0) or **P4-002** (Implement approve/publish APIs — P0, already implemented via lifecycle, may be marked DONE). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P4-003 merges, start **P4-006** (Add publication permission tests — P0) or **P8-001** (Create LLM provider interface — P0) or **P4-002** (Implement approve/publish APIs — P0, already implemented via lifecycle, may be marked DONE) or **P6-001** (Build document detail API — P0, now unblocked as P4-003 done). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 
