@@ -76,7 +76,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 
 | ID | Pri | Status | Task | Depends On |
 |---|---|---|---|---|
-| P4-001 | P0 | TODO | Implement review queue API | P2-005 |
+| P4-001 | P0 | DONE | Implement review queue API | P2-005 |
 | P4-002 | P0 | TODO | Implement approve/publish APIs | P4-001 |
 | P4-003 | P0 | TODO | Implement supersession/version APIs | P2-001,P2-005 |
 | P4-004 | P1 | TODO | Build approval queue UI | P4-001 |

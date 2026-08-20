@@ -355,7 +355,21 @@ export class DocumentsService {
     actor: UploadActor,
     query: DocumentListQuery,
   ): Promise<{ data: DocumentListItemView[]; total: number }> {
-    const statuses = query.status ? [query.status] : visibleStatusesForRole(actor.role);
+    let statuses: DocumentStatus[] | undefined;
+    if (query.status) {
+      // Enforce RBAC for status-filtered listing: non-PUBLISHED statuses require approver/publisher
+      if (
+        query.status !== 'PUBLISHED' &&
+        !hasCapability(actor.role as Role, 'document.approve') &&
+        !hasCapability(actor.role as Role, 'document.publish') &&
+        !isDocumentManager(actor.role)
+      ) {
+        throw AppError.forbidden('Insufficient permissions to filter by this status.');
+      }
+      statuses = [query.status];
+    } else {
+      statuses = visibleStatusesForRole(actor.role);
+    }
     const rows = await this.documents.list(actor.institutionId, {
       search: query.search,
       department_id: query.department_id,
@@ -398,6 +412,16 @@ export class DocumentsService {
       })),
       total,
     };
+  }
+
+  async reviewQueue(
+    actor: UploadActor,
+    query: Omit<DocumentListQuery, 'status'>,
+  ): Promise<{ data: DocumentListItemView[]; total: number }> {
+    if (!hasCapability(actor.role as Role, 'document.approve')) {
+      throw AppError.forbidden();
+    }
+    return this.list(actor, { ...query, status: 'IN_REVIEW' });
   }
 
   async get(actor: UploadActor, documentId: string): Promise<DocumentDetailView | null> {
