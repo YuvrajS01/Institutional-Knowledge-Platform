@@ -6,23 +6,23 @@
 
 ## Current Phase
 
-Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI done; Phase 3 remainder P1 tasks pending.
+Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P5-010** (Build search results UI) — implementation complete on task branch `feat/P5-010-search-results-ui`; PR pending human approval.
+**P5-014** (Build search evaluation set) — implementation complete on task branch `feat/P5-014-search-evaluation-set`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P5-010-search-results-ui`
+`feat/P5-014-search-evaluation-set`
 
 ## Overall Status
 
-`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), and P5-010 (search results UI) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search (P5-008/011→) still pending.
+`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search (P5-008/011→) still pending.
 
 ## Last Completed Task
 
-P5-010 (Build search results UI) — `apps/web/src/app/search/page.tsx` (`'use client'`, `HybridSearchService` via `GET /search`, `q|query|search` + `department_id`/`document_type` filters, `page`/`limit` pagination, `facet` counts, `loading`/`error`/`empty` (We couldn't find…) / `success` states per UI_UX_DESIGN §6/8, `Score`/`match_reasons`/`is_current` badges, `Open`/`Share`, `Suspense` for `useSearchParams`, `requireMember` redirect to `/login`) + `apps/web/src/app/page.tsx` (home `form action="/search"` search bar per UI_UX §5); `next build` 9 routes including `/search` 3.07 kB, `284` tests passing.
+P5-014 (Build search evaluation set) — `tests/evals/search-evaluation.dataset.json` (12 cases: exact, partial, natural, vague, date, department, version-conflict, multilingual hi, hinglish, no-answer, restricted, prefix-fuzzy per TEST_STRATEGY §6) + `search-evaluation.runner.ts` (Recall@5/10, MRR, NDCG@5/10, zero-result, per-case) + `search-evaluation.test.ts` (hybrid integration via seeded docs, Recall@5≥0.4 MRR≥0.3) + `search-evaluation.runner.test.ts` (4 unit) + `tsconfig.test.json` paths for `@ikp/processing` etc. + `package.json` `pg` root dev dep for evals; `290` tests passing.
 
 ## What Is Working
 
@@ -68,6 +68,12 @@ P5-010 (Build search results UI) — `apps/web/src/app/search/page.tsx` (`'use c
   - **`apps/web/src/app/search/page.tsx`**: `'use client'` + `Suspense` for `useSearchParams`; `HybridSearchService` via `GET /search` (`apiEnvelopeRequest`), `q|query|search` + `department_id`/`document_type` filters, `page`/`limit` pagination, `visibleStatusesForRole` handled server-side; states `idle` (try asking), `loading` (aria-busy), `error` (retry), `empty` (We couldn't find… + suggestions per UI_UX §8), `success` (results grid with `title`/`score`/`match_reasons`/`published_at`/`is_current` badge per UI_UX §6, `Open`/`Share`, `facets` counts, `pagination`); `requireMember` redirect to `/login` on 401.
   - **`apps/web/src/app/page.tsx`**: home `form action="/search"` search bar (UI_UX §5: “Search anything in your institution…” + try asking) + `Search` link.
   - `next build` 9 routes including `/search` 3.07 kB, `284` tests passing.
+- Search evaluation set (P5-014):
+  - **`tests/evals/search-evaluation.dataset.json`**: 12 cases (exact/partial/natural/vague/date/department/version-conflict/multilingual hi/hinglish/no-answer/restricted/prefix-fuzzy) per `TEST_STRATEGY.md` §6 and `AI_EVALUATION.md` §2.
+  - **`tests/evals/search-evaluation.runner.ts`**: `evaluateSearch(dataset, searchFn)` computes `Recall@5/10`, `MRR`, `NDCG@5/10`, `zero-result` and `per_case` with `formatMetrics`.
+  - **`tests/evals/search-evaluation.test.ts`**: integration via `HybridSearchService` (seeded titles/chunks, mock `mock-bge-m3`), asserts `Recall@5≥0.4` `MRR≥0.3` and per-case.
+  - **`tests/evals/search-evaluation.runner.test.ts`**: 4 unit tests (perfect, zero/no-answer, partial, NDCG).
+  - `tsconfig.test.json` paths for `@ikp/processing` etc., `package.json` root `pg` for evals.
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
@@ -102,10 +108,10 @@ P5-010 (Build search results UI) — `apps/web/src/app/search/page.tsx` (`'use c
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 (PR #31). Task branch `feat/P5-010-search-results-ui` adds search results UI, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 (PR #32). Task branch `feat/P5-014-search-evaluation-set` adds search evaluation set, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (284)  build ✅ (9/9 including /search)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (290, +6 eval)  build ✅ (9/9)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -131,7 +137,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (284) |
+| Unit/integration tests | PASS (290) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -159,15 +165,16 @@ When switching AI tools/models:
 | Hybrid retrieval (lexical + vector merge, 0.4/0.6) | PASS (9) |
 | Search API (hybrid, tenant, PUBLISHED, facets) | PASS (7) |
 | Search results UI (hybrid, filters, pagination, empty) | PASS (build 9/9) |
+| Search evaluation set (Recall@5/10, MRR, NDCG) | PASS (6) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
-| Search evaluation | NOT STARTED |
+| Search evaluation | DONE (P5-014) |
 | AI/RAG evaluation | NOT STARTED |
 
 ## Next Recommended Action
 
-After P5-010 merges, start **P5-014** (Build search evaluation set — P0) or **P4-001** (Implement review queue API — P0) or **P4-003** (Implement supersession/version APIs — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P5-014 merges, start **P4-001** (Implement review queue API — P0) or **P4-003** (Implement supersession/version APIs — P0) or **P8-001** (Create LLM provider interface — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "exact-title-001",
+    "query": "Holiday Schedule",
+    "query_type": "exact_title",
+    "expected_titles": ["Holiday Schedule"],
+    "language": "en",
+    "difficulty": "easy",
+    "department": null
+  },
+  {
+    "id": "partial-title-002",
+    "query": "Holiday",
+    "query_type": "partial_title",
+    "expected_titles": ["Holiday Schedule"],
+    "language": "en",
+    "difficulty": "easy",
+    "department": null
+  },
+  {
+    "id": "natural-language-003",
+    "query": "notice about exam form late fee",
+    "query_type": "natural_language",
+    "expected_titles": ["Examination Form Submission Notice"],
+    "language": "en",
+    "difficulty": "medium",
+    "department": "Examination"
+  },
+  {
+    "id": "vague-memory-004",
+    "query": "what was the hostel deadline in August?",
+    "query_type": "vague_memory",
+    "expected_titles": ["Hostel Fee Circular"],
+    "language": "en",
+    "difficulty": "medium",
+    "department": "Hostel"
+  },
+  {
+    "id": "date-based-005",
+    "query": "deadline 18 August",
+    "query_type": "date_related",
+    "expected_titles": ["Examination Form Submission Notice"],
+    "language": "en",
+    "difficulty": "medium",
+    "department": null
+  },
+  {
+    "id": "department-related-006",
+    "query": "CSE notice",
+    "query_type": "department_related",
+    "expected_titles": ["CSE Department Notice"],
+    "language": "en",
+    "difficulty": "easy",
+    "department": "CSE"
+  },
+  {
+    "id": "version-conflict-007",
+    "query": "examination deadline",
+    "query_type": "version_conflict",
+    "expected_titles": ["Examination Form Submission Notice v2"],
+    "language": "en",
+    "difficulty": "hard",
+    "department": null
+  },
+  {
+    "id": "multilingual-hi-008",
+    "query": "परीक्षा फॉर्म जमा करने की अंतिम तिथि",
+    "query_type": "multilingual",
+    "expected_titles": ["परीक्षा फॉर्म सूचना"],
+    "language": "hi",
+    "difficulty": "medium",
+    "department": null
+  },
+  {
+    "id": "hinglish-009",
+    "query": "exam form ka last date kya hai",
+    "query_type": "hinglish",
+    "expected_titles": ["Examination Form Submission Notice"],
+    "language": "hinglish",
+    "difficulty": "medium",
+    "department": null
+  },
+  {
+    "id": "no-answer-010",
+    "query": "hostel application deadline for first year",
+    "query_type": "no_answer",
+    "expected_titles": [],
+    "language": "en",
+    "difficulty": "hard",
+    "department": "Hostel"
+  },
+  {
+    "id": "restricted-011",
+    "query": "restricted scholarship notice",
+    "query_type": "restricted",
+    "expected_titles": [],
+    "language": "en",
+    "difficulty": "hard",
+    "department": null
+  },
+  {
+    "id": "prefix-fuzzy-012",
+    "query": "examin form",
+    "query_type": "prefix_fuzzy",
+    "expected_titles": ["Examination Form Submission Notice"],
+    "language": "en",
+    "difficulty": "medium",
+    "department": null
+  }
+]
