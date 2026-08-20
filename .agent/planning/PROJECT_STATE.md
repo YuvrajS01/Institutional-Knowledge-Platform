@@ -6,30 +6,30 @@
 
 ## Current Phase
 
-Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search done; Phase 3 remainder P1 tasks pending.
+Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P5-006** (Implement vector search) — implementation complete on task branch `feat/P5-006-vector-search`; PR pending human approval.
+**P5-007** (Implement hybrid retrieval) — implementation complete on task branch `feat/P5-007-hybrid-search`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P5-006-vector-search`
+`feat/P5-007-hybrid-search`
 
 ## Overall Status
 
-`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), and P5-006 (vector search) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG (P5-007→) still pending.
+`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), and P5-007 (hybrid retrieval) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG (P5-008→) still pending.
 
 ## Last Completed Task
 
-P5-006 (Implement vector search) — `apps/api/src/modules/search/vector-search.repository.ts` (pgvector cosine `embedding <=> $2::vector`, tenant-scoped `documents.institution_id`, `PUBLISHED` default, `::vector` cast, limit/offset, distance/similarity) + `vector-search.service.ts` (query `text` → `EmbeddingProvider.embed` → repository, `searchByEmbedding` direct) + `vector-search.repository.test.ts` 7 integration tests (semantic similarity ranking, empty, tenant isolation, status filter, validation, limit/offset) + `vector-search.service.test.ts` 4 unit tests (embed+delegate, empty, model/dims, direct); 266 tests passing.
+P5-007 (Implement hybrid retrieval) — `apps/api/src/modules/documents/documents.repository.ts` (`lexicalSearch` with `ts_rank` scoring) + `apps/api/src/modules/search/hybrid-search.service.ts` (lexical `ts_rank` + vector `cosine` candidate merge, max-similarity per doc, `lexicalWeight 0.4`/`semanticWeight 0.6` normalization, freshness tie-breaker, tenant/status-aware) + `vector-search.repository.ts` extended with `department_id`/`published_at` for hybrid + `hybrid-search.service.test.ts` 4 unit tests (merge ranking, empty, vector-only, model/dims) + `hybrid-search.integration.test.ts` 5 integration tests (both-match ranking, tenant isolation, PUBLISHED filter, empty/invalid, semantic-only); 277 tests passing.
 
 ## What Is Working
 
 - Everything from Phases 0–2 + P3-001..P5-001 (merged into `main` via PRs #1–#24).
 - Full-text search (P5-005):
   - **`infra/migrations/1787232000000_add-document-search-vector.js`**: `documents.search_vector tsvector` + trigger `documents_search_vector_update()` (weighted A title / B slug / C document_type) + GIN index `documents_search_vector_idx` + backfill for existing rows; down-migration drops trigger/function/index/column.
-  - **`apps/api/src/modules/documents/documents.repository.ts`**: `list()` search now uses `d.search_vector @@ plainto_tsquery('english', $n) OR d.title ILIKE $m` and, when searching, orders by `ts_rank(d.search_vector, plainto_tsquery(...)) DESC, d.created_at DESC` (relevance + recency). Non-search listings unchanged.
+  - **`apps/api/src/modules/documents/documents.repository.ts`**: `list()` search now uses `d.search_vector @@ plainto_tsquery('english', $n) OR d.title ILIKE $m` and, when searching, orders by `ts_rank(d.search_vector, plainto_tsquery(...)) DESC, d.created_at DESC` (relevance + recency). Non-search listings unchanged. **P5-007 adds `lexicalSearch(institutionId, query, {limit, statuses, department_id, document_type})` returning `DocumentListItem & {lexical_score}` via `ts_rank(d.search_vector, plainto_tsquery('english', $n))` ordered `lexical_score DESC`.
   - **`apps/api/src/modules/documents/documents.route.test.ts`**: 4 new FTS tests — stemmed term match (`schedules` → `Holiday Schedule`), token-order independence (`fare refund`), title relevance ranking (double-token title outranks), and search_vector trigger sync on title update.
 - Embedding provider interface (P5-002):
   - **`packages/processing/src/embedding.ts`**: `EmbeddingProvider` contract (`modelName()`, `dimensions()`, `embed(texts: string[]): Promise<number[][]>`) — provider-agnostic (ADR-003/007) for `vector(1024)` chunks (TECHNICAL_SPEC §10, AI_LLM_ARCHITECTURE §7/§18, IMPLEMENTATION_GUIDE §5).
@@ -50,10 +50,16 @@ P5-006 (Implement vector search) — `apps/api/src/modules/search/vector-search.
   - **`apps/worker/src/processing/processing.embeddings.unit.test.ts`**: 7 unit tests (chunk+embed, empty→0 chunks+delete, wrong count throws, idempotent COMPLETED no re-embed, page-aware, vector formatting `::vector`, null).
   - `processing.repository.ts` / `processing.service.test.ts` unchanged (integration still passes via pgvector).
 - Vector search (P5-006):
-  - **`apps/api/src/modules/search/vector-search.repository.ts`**: `VectorSearchRepository extends TenantRepository` — `searchByEmbedding(institutionId, queryEmbedding, {limit, offset, statuses, departmentId, documentType})` builds tenant-scoped `WHERE d.institution_id=$1 AND c.embedding IS NOT NULL AND d.status=ANY($3)`, optional department/type filters, `ORDER BY c.embedding <=> $2::vector ASC LIMIT/OFFSET`, returns `VectorSearchResult` with `distance` (`<=>`) and `similarity` (`1-distance`), validates non-empty/finite embedding, `tenantId()` fail-fast.
-  - **`apps/api/src/modules/search/vector-search.service.ts`**: `VectorSearchService` — `search(institutionId, {text, limit, offset, statuses, departmentId, documentType})` validates `text.trim()`, embeds via `EmbeddingProvider` (`createEmbeddingProvider()` mock/local), delegates to repository; `searchByEmbedding` direct for P5-007 hybrid; exposes `modelName()`/`dimensions()`.
+  - **`apps/api/src/modules/search/vector-search.repository.ts`**: `VectorSearchRepository extends TenantRepository` — `searchByEmbedding(institutionId, queryEmbedding, {limit, offset, statuses, departmentId, documentType})` builds tenant-scoped `WHERE d.institution_id=$1 AND c.embedding IS NOT NULL AND d.status=ANY($3)`, optional department/type filters, `ORDER BY c.embedding <=> $2::vector ASC LIMIT/OFFSET`, returns `VectorSearchResult` with `distance` (`<=>`) and `similarity` (`1-distance`), validates non-empty/finite embedding, `tenantId()` fail-fast, includes `department_id`/`published_at` for hybrid.
+  - **`apps/api/src/modules/search/vector-search.service.ts`**: `VectorSearchService` — `search(institutionId, {text, limit, offset, statuses, departmentId, documentType})` validates `text.trim()` non-empty, embeds via `EmbeddingProvider` (`createEmbeddingProvider()` mock/local), delegates to `VectorSearchRepository.searchByEmbedding`; `searchByEmbedding` direct for P5-007 hybrid; exposes `modelName()`/`dimensions()`.
   - **`apps/api/src/modules/search/vector-search.repository.test.ts`**: 7 integration tests (semantic similarity ranking via mock embeddings, empty, tenant isolation, PUBLISHED default + explicit DRAFT, validation, invalid tenant, limit/offset) — requires `pgvector/pgvector:pg17`.
   - **`apps/api/src/modules/search/vector-search.service.test.ts`**: 4 unit tests (embed+delegate, empty throws, model/dims, direct).
+- Hybrid retrieval (P5-007):
+  - **`apps/api/src/modules/documents/documents.repository.ts`**: added `lexicalSearch` for hybrid (see above).
+  - **`apps/api/src/modules/search/vector-search.repository.ts`**: extended to return `department_id`/`published_at` for hybrid merging.
+  - **`apps/api/src/modules/search/hybrid-search.service.ts`**: `HybridSearchService` — `search(institutionId, query, {limit, offset, statuses, departmentId, documentType, lexicalWeight=0.4, semanticWeight=0.6})` embeds query, runs `lexicalSearch` (top 20) and `vector.searchByEmbedding` (top 20) in parallel, aggregates vector chunks to `max similarity` per doc, normalizes `lexical_score / maxLexical` and `similarity / maxSemantic`, hybrid `lexicalWeight*normLex + semanticWeight*normSem`, `match_reasons` `['lexical','semantic']`, freshness tie-breaker `published_at`, sorts `hybrid_score DESC`.
+  - **`apps/api/src/modules/search/hybrid-search.service.test.ts`**: 4 unit tests (merge ranking both>single, empty, vector-only, model/dims).
+  - **`apps/api/src/modules/search/hybrid-search.integration.test.ts`**: 5 integration tests (both-match ranking, tenant isolation, PUBLISHED filter, empty/invalid, semantic-only) — requires `pgvector`.
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
@@ -61,12 +67,12 @@ P5-006 (Implement vector search) — `apps/api/src/modules/search/vector-search.
 - Prior metadata interface (P3-005):
   - **`MetadataExtractor` contract** with Zod validation, `HeuristicMetadataExtractor` baseline.
 - Prior processing orchestration (P3-004):
-  - **Worker pipeline**: `document.process` job → tenant-scoped version lookup → download original → text extraction → OCR when inadequate → persist `extracted_text`/`ocr_status`/`page_count`/`processing_status` → write `extracted.txt` artifact + chunk/embed + vector search (idempotent, tenant-aware, retryable).
+  - **Worker pipeline**: `document.process` job → tenant-scoped version lookup → download original → text extraction → OCR when inadequate → persist `extracted_text`/`ocr_status`/`page_count`/`processing_status` → write `extracted.txt` artifact + chunk/embed + vector/hybrid search (idempotent, tenant-aware, retryable).
 
 ## What Is Not Implemented
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
-- Search remainder: hybrid (P5-007), search API (P5-009), etc.
+- Search remainder: reranker (P5-008), search API (P5-009), etc.
 - Phases 4, 6–10.
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
@@ -88,10 +94,10 @@ P5-006 (Implement vector search) — `apps/api/src/modules/search/vector-search.
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 (PR #28). Task branch `feat/P5-006-vector-search` adds vector search, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 (PR #29). Task branch `feat/P5-007-hybrid-search` adds hybrid retrieval, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (266, +11 vector search)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (277, +11 hybrid)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -117,7 +123,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (266) |
+| Unit/integration tests | PASS (277) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -142,6 +148,7 @@ When switching AI tools/models:
 | Local embedding adapter (Ollama/OpenAI, batching, env factory) | PASS (27) |
 | Generate/store embeddings (chunk → embed → pgvector) | PASS (8) |
 | Vector search (pgvector cosine, tenant, PUBLISHED) | PASS (11) |
+| Hybrid retrieval (lexical + vector merge, 0.4/0.6) | PASS (9) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -150,7 +157,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P5-006 merges, start **P5-007** (Implement hybrid retrieval — P0) or **P4-001** (Implement review queue API — P0) or **P4-003** (Implement supersession/version APIs — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P5-007 merges, start **P5-009** (Implement search API — P0) or **P4-001** (Implement review queue API — P0) or **P4-003** (Implement supersession/version APIs — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 

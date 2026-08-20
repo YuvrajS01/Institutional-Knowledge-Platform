@@ -207,6 +207,71 @@ export class DocumentsRepository extends TenantRepository {
     return row ? mapDocumentRow(row as Record<string, unknown>) : null;
   }
 
+  async lexicalSearch(
+    institutionId: string,
+    query: string,
+    options: Omit<DocumentListFilter, 'search' | 'limit' | 'offset' | 'sort'> & {
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<Array<DocumentListItem & { lexical_score: number }>> {
+    const tenantId = this.tenantId(institutionId);
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return [];
+    }
+    const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
+    const offset = Math.max(options.offset ?? 0, 0);
+
+    // Build base filter without search, then add lexical where + ts_rank
+    const baseFilter: Omit<DocumentListFilter, 'limit' | 'offset' | 'sort'> = {
+      department_id: options.department_id,
+      document_type: options.document_type,
+      statuses: options.statuses,
+      academic_year: options.academic_year,
+      course: options.course,
+      semester: options.semester,
+      tag: options.tag,
+      published_from: options.published_from,
+      published_to: options.published_to,
+    };
+    const built = this.buildListQuery({ ...baseFilter, search: undefined } as DocumentListFilter);
+    built.where.push(this.tenantCondition('d', 1));
+    const params: unknown[] = [tenantId, ...built.params];
+
+    // Lexical params: search text for plainto_tsquery and ILIKE fallback
+    const tsQueryIdx = params.length + 1;
+    const ilikeIdx = params.length + 2;
+    params.push(trimmed, `%${trimmed}%`);
+    built.where.push(
+      `(d.search_vector @@ plainto_tsquery('english', $${tsQueryIdx}) OR d.title ILIKE $${ilikeIdx})`,
+    );
+
+    params.push(limit, offset);
+    const limitIdx = params.length - 1;
+    const offsetIdx = params.length;
+
+    const result = await this.pool.query(
+      `SELECT
+         d.id, d.title, d.slug, d.document_type, d.status, d.department_id,
+         d.published_at, d.effective_from, d.effective_to, d.created_at, d.updated_at,
+         dept.name AS department_name,
+         m.academic_year, m.course, m.semester, m.tags,
+         ts_rank(d.search_vector, plainto_tsquery('english', $${tsQueryIdx})) AS lexical_score
+       FROM documents d
+       LEFT JOIN departments dept ON dept.id = d.department_id
+       LEFT JOIN document_metadata m ON m.document_id = d.id
+       WHERE ${built.where.join(' AND ')}
+       ORDER BY lexical_score DESC, d.created_at DESC
+       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      params,
+    );
+    return result.rows.map((row) => ({
+      ...mapDocumentListItem(row as Record<string, unknown>),
+      lexical_score: Number((row as { lexical_score: number }).lexical_score),
+    }));
+  }
+
   /**
    * Lists tenant documents with filters. Visibility (status filtering by
    * role) is applied by the caller via `statuses`.
