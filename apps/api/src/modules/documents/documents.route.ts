@@ -365,4 +365,60 @@ export async function registerDocumentsRoutes(
       return reply.status(200).send({ data });
     },
   );
+
+  app.post(
+    '/documents/:document_id/supersede',
+    {
+      preHandler: options.authorization.guard('document.publish'),
+      config: { rateLimit: WRITE_RATE_LIMIT },
+    },
+    async (request, reply) => {
+      const parsed = documentParamsSchema.safeParse(request.params);
+      if (!parsed.success) {
+        throw new AppError('VALIDATION_ERROR', 'One or more fields are invalid.', 422, {});
+      }
+      const bodySchema = z.object({
+        superseded_by_document_id: z.string().uuid(),
+        reason: z.string().trim().max(500).optional(),
+      });
+      const bodyParsed = bodySchema.safeParse(request.body);
+      if (!bodyParsed.success) {
+        throw new AppError(
+          'VALIDATION_ERROR',
+          'One or more fields are invalid.',
+          422,
+          bodyParsed.error.flatten().fieldErrors,
+        );
+      }
+      const data = await service.supersede(
+        actorFor(request),
+        parsed.data.document_id,
+        bodyParsed.data.superseded_by_document_id,
+        bodyParsed.data.reason ?? null,
+      );
+      if (!data) {
+        throw AppError.notFound('Document not found.');
+      }
+      return reply.status(200).send({ data });
+    },
+  );
+
+  app.get(
+    '/documents/:document_id/versions',
+    {
+      preHandler: options.authorization.requireMember,
+      config: { rateLimit: READ_RATE_LIMIT },
+    },
+    async (request, reply) => {
+      const parsed = documentParamsSchema.safeParse(request.params);
+      if (!parsed.success) {
+        throw new AppError('VALIDATION_ERROR', 'One or more fields are invalid.', 422, {});
+      }
+      const data = await service.listVersions(actorFor(request), parsed.data.document_id);
+      if (!data) {
+        throw AppError.notFound('Document not found.');
+      }
+      return reply.status(200).send({ data });
+    },
+  );
 }

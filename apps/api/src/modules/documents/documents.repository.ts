@@ -14,6 +14,9 @@ export interface DocumentRow {
   published_at: Date | null;
   effective_from: Date | null;
   effective_to: Date | null;
+  superseded_by_document_id: string | null;
+  superseded_reason: string | null;
+  superseded_at: Date | null;
   created_by: string;
   created_at: Date;
   updated_at: Date;
@@ -83,6 +86,9 @@ function mapDocumentRow(row: Record<string, unknown>): DocumentRow {
     published_at: (row.published_at as Date | null) ?? null,
     effective_from: (row.effective_from as Date | null) ?? null,
     effective_to: (row.effective_to as Date | null) ?? null,
+    superseded_by_document_id: (row.superseded_by_document_id as string | null) ?? null,
+    superseded_reason: (row.superseded_reason as string | null) ?? null,
+    superseded_at: (row.superseded_at as Date | null) ?? null,
     created_by: row.created_by as string,
     created_at: row.created_at as Date,
     updated_at: row.updated_at as Date,
@@ -101,6 +107,9 @@ const SELECT_COLUMNS = [
   'published_at',
   'effective_from',
   'effective_to',
+  'superseded_by_document_id',
+  'superseded_reason',
+  'superseded_at',
   'created_by',
   'created_at',
   'updated_at',
@@ -202,6 +211,28 @@ export class DocumentsRepository extends TenantRepository {
         input.effective_from === undefined ? null : input.effective_from,
         input.effective_to === undefined ? null : input.effective_to,
       ],
+    );
+    const row = result.rows[0];
+    return row ? mapDocumentRow(row as Record<string, unknown>) : null;
+  }
+
+  async supersede(
+    institutionId: string,
+    documentId: string,
+    supersededByDocumentId: string,
+    reason?: string | null,
+  ): Promise<DocumentRow | null> {
+    const tenantId = this.tenantId(institutionId);
+    const result = await this.pool.query(
+      `UPDATE documents d
+       SET status = 'SUPERSEDED',
+           superseded_by_document_id = $3,
+           superseded_reason = $4,
+           superseded_at = now(),
+           updated_at = now()
+       WHERE d.id = $2 AND ${this.tenantCondition('d', 1)}
+       RETURNING ${SELECT_COLUMNS}`,
+      [tenantId, documentId, supersededByDocumentId, reason ?? null],
     );
     const row = result.rows[0];
     return row ? mapDocumentRow(row as Record<string, unknown>) : null;

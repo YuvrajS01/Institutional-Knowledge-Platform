@@ -582,6 +582,74 @@ export class DocumentsService {
     return this.get(actor, documentId);
   }
 
+  async supersede(
+    actor: UploadActor,
+    documentId: string,
+    supersededByDocumentId: string,
+    reason?: string | null,
+  ): Promise<DocumentDetailView | null> {
+    if (!hasCapability(actor.role as Role, 'document.publish')) {
+      throw AppError.forbidden();
+    }
+    const document = await this.documents.findById(actor.institutionId, documentId);
+    if (!document) {
+      return null;
+    }
+    if (document.status !== 'PUBLISHED') {
+      throw new AppError(
+        ERROR_CODES.CONFLICT,
+        'Only PUBLISHED documents can be superseded.',
+        409,
+        { status: document.status },
+      );
+    }
+    if (documentId === supersededByDocumentId) {
+      throw new AppError(ERROR_CODES.CONFLICT, 'A document cannot supersede itself.', 409, {});
+    }
+    const supersededBy = await this.documents.findById(actor.institutionId, supersededByDocumentId);
+    if (!supersededBy) {
+      throw AppError.notFound('Superseding document not found.');
+    }
+    if (!canTransitionDocument(document.status, 'SUPERSEDED')) {
+      throw new AppError(
+        ERROR_CODES.CONFLICT,
+        `Cannot transition from ${document.status} to SUPERSEDED.`,
+        409,
+        { from: document.status, to: 'SUPERSEDED' },
+      );
+    }
+    await this.documents.supersede(
+      actor.institutionId,
+      documentId,
+      supersededByDocumentId,
+      reason ?? null,
+    );
+    await this.audit.record(actor, {
+      action: 'document.superseded',
+      entityType: 'document',
+      entityId: documentId,
+      metadata: { superseded_by: supersededByDocumentId, reason: reason ?? null },
+    });
+    return this.get(actor, documentId);
+  }
+
+  async listVersions(
+    actor: UploadActor,
+    documentId: string,
+  ): Promise<Array<{ id: string; version_number: number; created_at: string; is_current: boolean }> | null> {
+    const document = await this.documents.findById(actor.institutionId, documentId);
+    if (!document) {
+      return null;
+    }
+    const versions = await this.versions.listByDocumentId(actor.institutionId, documentId);
+    return versions.map((v) => ({
+      id: v.id,
+      version_number: v.version_number,
+      created_at: v.created_at.toISOString(),
+      is_current: document.current_version_id === v.id,
+    }));
+  }
+
   private async departmentName(
     institutionId: string,
     departmentId: string,
