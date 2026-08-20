@@ -25,6 +25,8 @@ export interface RagAnswerOptions {
   limit?: number;
   maxTokens?: number;
   maxChunks?: number;
+  departmentId?: string;
+  documentType?: string;
 }
 
 /**
@@ -61,7 +63,11 @@ export class RagAnswerService {
       throw new Error('question must be a non-empty string');
     }
 
-    const retrieved = await this.retrieval.retrieve(actor, q, { limit: options.limit ?? 5 });
+    const retrieved = await this.retrieval.retrieve(actor, q, {
+      limit: options.limit ?? 5,
+      departmentId: options.departmentId,
+      documentType: options.documentType,
+    });
 
     const built = this.contextBuilder.build(
       q,
