@@ -36,6 +36,19 @@ export class MockLLMProvider implements LLMProvider {
     const prompt = request.prompt.trim();
     const lower = prompt.toLowerCase();
 
+    // Unsupported / no-answer case — check first so that "unknown no-answer" queries don't get grounded
+    if (lower.includes('no-answer') || lower.includes('unknown') || lower.includes('unsupported')) {
+      return {
+        text: "I couldn't find an official institutional document confirming this.",
+        model: this._modelName,
+        usage: {
+          promptTokens: Math.ceil(prompt.length / 4),
+          completionTokens: 12,
+          totalTokens: Math.ceil(prompt.length / 4) + 12,
+        },
+      };
+    }
+
     // Simulate a grounded answer for institutional queries
     if (
       lower.includes('examination') ||
@@ -53,19 +66,6 @@ export class MockLLMProvider implements LLMProvider {
           promptTokens: Math.ceil(prompt.length / 4),
           completionTokens: 20,
           totalTokens: Math.ceil(prompt.length / 4) + 20,
-        },
-      };
-    }
-
-    // Unsupported / no-answer case
-    if (lower.includes('no-answer') || lower.includes('unknown') || lower.includes('unsupported')) {
-      return {
-        text: "I couldn't find an official institutional document confirming this.",
-        model: this._modelName,
-        usage: {
-          promptTokens: Math.ceil(prompt.length / 4),
-          completionTokens: 12,
-          totalTokens: Math.ceil(prompt.length / 4) + 12,
         },
       };
     }
