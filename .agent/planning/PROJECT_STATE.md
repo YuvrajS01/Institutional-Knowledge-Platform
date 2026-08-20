@@ -6,23 +6,23 @@
 
 ## Current Phase
 
-Phase 6 (Consumption) — document detail API done; Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
+Phase 6 (Consumption) — document detail API + document detail page done; Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P6-001** (Build document detail API) — implementation complete on task branch `feat/P6-001-document-detail-api`; PR pending human approval.
+**P6-002** (Build document detail page) — implementation complete on task branch `feat/P6-002-document-detail-page`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P6-001-document-detail-api`
+`feat/P6-002-document-detail-page`
 
 ## Overall Status
 
-`PHASE_6_IN_PROGRESS` — P6-001 (document detail API) done; `PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 6/8 (P6-002→, P8-001→) still pending.
+`PHASE_6_IN_PROGRESS` — P6-001 (document detail API) and P6-002 (document detail page) done; `PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 6/8 (P6-003→, P8-001→) still pending.
 
 ## Last Completed Task
 
-P6-001 (Build document detail API) — `apps/api/src/modules/documents/documents.service.ts` (`DocumentDetailView` + `is_current`/`superseded_by`/`superseded_at`/`superseded_reason`/`current_version_id`, `get` now returns `SUPERSEDED` to students as historical with `is_current:false`, `superseded_by` resolved via `findById`) + `document-detail.route.test.ts` 4 integration tests (PUBLISHED is_current true, SUPERSEDED is_current false with superseded_by, tenant isolation, DRAFT hidden from student); 317 tests passing.
+P6-002 (Build document detail page) — `apps/web/src/app/documents/[id]/page.tsx` (`'use client'` + `Suspense` for `useSearchParams`? actually `useParams`, `HybridSearchService` via `GET /documents/:id` + `GET /documents/:id/versions`, `is_current`/`superseded_by`/`current_version_id`, `loading`/`error`/`ready` states per UI_UX §9, `Current`/`Not current`/`Superseded` badges, `Superseded by` link, version history table, `Copy link`/`Search related`, `requireMember` redirect) + `apps/web/src/app/page.tsx` home search bar already done in P5-010; `next build` 10 routes including `/documents/[id]` 2.49 kB and `/search` 3.07 kB, `317` tests passing.
 
 ## What Is Working
 
@@ -90,6 +90,9 @@ P6-001 (Build document detail API) — `apps/api/src/modules/documents/documents
 - Document detail API (P6-001):
   - **`apps/api/src/modules/documents/documents.service.ts`**: `DocumentDetailView` + `is_current`/`superseded_by`/`superseded_at`/`superseded_reason`/`current_version_id`, `get` now returns `SUPERSEDED` to students as historical with `is_current:false`, `superseded_by` resolved, `is_current` via `PUBLISHED && !superseded_by`.
   - **`apps/api/src/modules/documents/document-detail.route.test.ts`**: 4 integration tests (PUBLISHED `is_current` true, SUPERSEDED `is_current` false with `superseded_by`, tenant isolation, DRAFT hidden).
+- Document detail page (P6-002):
+  - **`apps/web/src/app/documents/[id]/page.tsx`**: `'use client'` + `useParams`/`useRouter`/`useEffect`/`useState`/`Suspense`? actually `useParams`; fetches `GET /documents/:id` + `GET /documents/:id/versions` via `apiRequest`, states `loading`/`error`/`ready`; shows `status`/`is_current`/`Superseded` badges, `title`, `department`/`type`/`published_at`, `Superseded by` link, version history table (`version_number`/`created_at`/`is_current`), `Copy link`/`Search related`, `Back to search`.
+  - `next build` 10 routes including `/documents/[id]` 2.49 kB and `/search` 3.07 kB.
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
@@ -103,7 +106,7 @@ P6-001 (Build document detail API) — `apps/api/src/modules/documents/documents
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
 - Search remainder: reranker (P5-008), filters/facets (P5-011), search analytics (P5-012), etc.
-- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), etc., and Phases 6–10 (P6-002→, P8-001→).
+- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), etc., and Phases 6–10 (P6-003→, P8-001→).
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
 ## Active Blockers
@@ -124,10 +127,10 @@ P6-001 (Build document detail API) — `apps/api/src/modules/documents/documents
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 + P4-003 + P4-006 (PR #36). Task branch `feat/P6-001-document-detail-api` adds document detail API, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 + P4-003 + P4-006 + P6-001 (PR #37). Task branch `feat/P6-002-document-detail-page` adds document detail page, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (317, +4 detail)  build ✅ (9/9)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (317)  build ✅ (10/10 including /documents/[id] + /search)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -180,12 +183,13 @@ When switching AI tools/models:
 | Vector search (pgvector cosine, tenant, PUBLISHED) | PASS (11) |
 | Hybrid retrieval (lexical + vector merge, 0.4/0.6) | PASS (9) |
 | Search API (hybrid, tenant, PUBLISHED, facets) | PASS (7) |
-| Search results UI (hybrid, filters, pagination, empty) | PASS (build 9/9) |
+| Search results UI (hybrid, filters, pagination, empty) | PASS (build 10/10) |
 | Search evaluation set (Recall@5/10, MRR, NDCG) | PASS (6) |
 | Review queue API (IN_REVIEW, RBAC, tenant) | PASS (6) |
 | Supersession/version APIs (SUPERSEDED, versions) | PASS (9) |
 | Publication permission tests (PUBLISHED, SUPERSEDED, search) | PASS (8) |
 | Document detail API (PUBLISHED/SUPERSEDED, is_current) | PASS (4) |
+| Document detail page (is_current, superseded_by, versions) | PASS (build 10/10) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -194,7 +198,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P6-001 merges, start **P6-002** (Build document detail page — P0) or **P8-001** (Create LLM provider interface — P0) or **P4-004** (Build approval queue UI — P1). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P6-002 merges, start **P8-001** (Create LLM provider interface — P0) or **P4-004** (Build approval queue UI — P1) or **P6-003** (Add document summary display — P1, depends `P3-006`/`P6-002`). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 
