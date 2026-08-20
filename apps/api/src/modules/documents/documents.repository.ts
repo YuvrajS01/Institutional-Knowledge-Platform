@@ -245,7 +245,7 @@ export class DocumentsRepository extends TenantRepository {
       limit?: number;
       offset?: number;
     },
-  ): Promise<Array<DocumentListItem & { lexical_score: number }>> {
+  ): Promise<Array<DocumentListItem & { lexical_score: number; version_id: string | null }>> {
     const tenantId = this.tenantId(institutionId);
     const trimmed = query.trim();
     if (!trimmed) {
@@ -286,6 +286,8 @@ export class DocumentsRepository extends TenantRepository {
       `SELECT
          d.id, d.title, d.slug, d.document_type, d.status, d.department_id,
          d.published_at, d.effective_from, d.effective_to, d.created_at, d.updated_at,
+         d.current_version_id AS version_id,
+         COALESCE(d.current_version_id, (SELECT v.id FROM document_versions v WHERE v.document_id = d.id ORDER BY v.version_number DESC LIMIT 1)) AS resolved_version_id,
          dept.name AS department_name,
          m.academic_year, m.course, m.semester, m.tags,
          ts_rank(d.search_vector, plainto_tsquery('english', $${tsQueryIdx})) AS lexical_score
@@ -300,6 +302,8 @@ export class DocumentsRepository extends TenantRepository {
     return result.rows.map((row) => ({
       ...mapDocumentListItem(row as Record<string, unknown>),
       lexical_score: Number((row as { lexical_score: number }).lexical_score),
+      version_id: ((row as { resolved_version_id: string | null }).resolved_version_id ??
+        (row as { version_id: string | null }).version_id) as string | null,
     }));
   }
 

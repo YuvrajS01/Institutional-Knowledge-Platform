@@ -2,19 +2,23 @@ import type { LLMProvider } from '@ikp/processing';
 import { createLLMProvider } from '@ikp/processing';
 
 import type { DbPool } from '../../infrastructure/db/db-pool.js';
+import {
+  extractCitedIndices,
+  isUnsupportedAnswer,
+  UNSUPPORTED_ANSWER,
+  type Citation,
+} from './citation.js';
 import { ContextBuilderService } from './context-builder.service.js';
-import { PermissionAwareRetrievalService, type RetrievalActor } from '../search/permission-aware-retrieval.service.js';
+import {
+  PermissionAwareRetrievalService,
+  type RetrievalActor,
+} from '../search/permission-aware-retrieval.service.js';
 
 export interface RagAnswer {
   answer: string;
   grounded: boolean;
   confidence: 'high' | 'medium' | 'low';
-  citations: Array<{
-    document_id: string;
-    title: string;
-    chunk_id?: string;
-    page_number: number | null;
-  }>;
+  citations: Citation[];
 }
 
 export interface RagAnswerOptions {
@@ -24,12 +28,10 @@ export interface RagAnswerOptions {
 }
 
 /**
- * RAG answer service (P8-006) — permission-aware retrieval → context builder → LLM → citation validation.
- *
- * Pipeline (IMPLEMENTATION_GUIDE §9, AI_LLM_ARCHITECTURE §14):
- * question → authorization → hybrid search (via PermissionAwareRetrieval) → context builder → prompt → LLM → structured answer → citation validation
- *
+ * RAG answer service (P8-006) + Citation contract (P8-007) + Unsupported behavior (P8-008).
+ * Pipeline: question → permission-aware retrieval → context builder → prompt → LLM → citation validation.
  * No post-generation filtering of restricted content — filtering is done in retrieval (P8-004).
+ * Citations are contract-validated (P8-007) and unsupported answers use canonical sentence (P8-008).
  */
 export class RagAnswerService {
   private readonly retrieval: PermissionAwareRetrievalService;
@@ -59,18 +61,17 @@ export class RagAnswerService {
       throw new Error('question must be a non-empty string');
     }
 
-    // 1. Permission-aware retrieval (tenant + RBAC, PUBLISHED for STUDENT)
-    const retrieved = await this.retrieval.retrieve(actor, q, {
-      limit: options.limit ?? 5,
-    });
+    const retrieved = await this.retrieval.retrieve(actor, q, { limit: options.limit ?? 5 });
 
-    // 2. Context builder (handles no-answer case when retrieved is empty)
-    const built = this.contextBuilder.build(q, retrieved as unknown as Parameters<ContextBuilderService['build']>[1], {
-      maxTokens: options.maxTokens,
-      maxChunks: options.maxChunks,
-    });
+    const built = this.contextBuilder.build(
+      q,
+      retrieved as unknown as Parameters<ContextBuilderService['build']>[1],
+      {
+        maxTokens: options.maxTokens,
+        maxChunks: options.maxChunks,
+      },
+    );
 
-    // 3. LLM generation
     const llmResponse = await this.llm.generate({
       prompt: built.userPrompt,
       systemPrompt: built.systemPrompt,
@@ -80,45 +81,87 @@ export class RagAnswerService {
 
     const text = llmResponse.text.trim();
 
-    // 4. Citation validation — ensure citations correspond to retrieved docs
-    // For mock, the LLM may return hash-based citations; we validate that any [n] in the answer corresponds to a retrieved doc
-    const citationPattern = /\[(\d+)\]/g;
-    const citedIndices = new Set<number>();
-    let match: RegExpExecArray | null;
-    while ((match = citationPattern.exec(text)) !== null) {
-      const idx = Number(match[1]);
-      if (Number.isFinite(idx) && idx >= 1 && idx <= built.citations.length) {
-        citedIndices.add(idx);
+    // P8-008: unsupported behavior — canonical sentence, grounded false, low confidence, empty citations
+    if (isUnsupportedAnswer(text) || built.citations.length === 0) {
+      // If LLM returned unsupported but we had no citations, ensure we return canonical empty
+      // If LLM returned unsupported with citations, still treat as unsupported (no leakage)
+      const isNoAnswer = isUnsupportedAnswer(text);
+      if (isNoAnswer || built.citations.length === 0) {
+        // When no citations, we must not claim grounded even if LLM hallucinated markers
+        if (built.citations.length === 0) {
+          return {
+            answer: UNSUPPORTED_ANSWER,
+            grounded: false,
+            confidence: 'low',
+            citations: [],
+          };
+        }
+        // Has citations but LLM says unsupported → respect LLM's unsupported
+        if (isNoAnswer) {
+          return {
+            answer: UNSUPPORTED_ANSWER,
+            grounded: false,
+            confidence: 'low',
+            citations: [],
+          };
+        }
       }
     }
 
-    // If LLM returned grounded text but no valid citations and we have retrieved docs, it's still considered grounded if it contains the no-answer sentence
-    const isNoAnswer = text.includes("I couldn't find an official institutional document confirming this.");
     const hasCitations = built.citations.length > 0;
-
-    // Grounded if we have retrieved docs and LLM didn't return no-answer, and (if it cited, citations are valid)
+    const isNoAnswer = isUnsupportedAnswer(text);
     const grounded = hasCitations && !isNoAnswer;
     const confidence: RagAnswer['confidence'] = grounded ? 'high' : isNoAnswer ? 'low' : 'medium';
 
-    // Filter citations to only those actually cited, or all if none cited but grounded
-    let finalCitations: RagAnswer['citations'];
     if (isNoAnswer) {
-      finalCitations = [];
-    } else if (citedIndices.size > 0) {
-      finalCitations = Array.from(citedIndices)
-        .sort((a, b) => a - b)
-        .map((idx) => built.citations[idx - 1]!)
-        .filter(Boolean);
+      return {
+        answer: UNSUPPORTED_ANSWER,
+        grounded: false,
+        confidence: 'low',
+        citations: [],
+      };
+    }
+
+    const citedIndices = extractCitedIndices(text, built.citations.length);
+
+    let finalCitations: Citation[];
+    if (citedIndices.length > 0) {
+      finalCitations = citedIndices.map((idx) => built.citations[idx - 1]!).filter(Boolean);
     } else {
-      // If grounded but no explicit [n], return all citations (conservative)
-      finalCitations = grounded ? built.citations : [];
+      finalCitations = grounded ? [...built.citations] : [];
+    }
+
+    // P8-007: ensure citation contract — enrich with legacy aliases for backward compat
+    // and validate (throws if version_id missing, etc.)
+    const enriched: Citation[] = finalCitations.map((c) => ({
+      document_id: c.document_id,
+      document_title: c.document_title,
+      version_id: c.version_id,
+      page: c.page,
+      chunk_id: c.chunk_id,
+      // legacy aliases — keep tests that check `title`/`page_number` passing
+      title: (c as unknown as { title?: string }).title ?? c.document_title,
+      page_number: (c as unknown as { page_number?: number | null }).page_number ?? c.page,
+    }));
+
+    // Contract validation — fail closed if any citation is malformed (prevents hallucinated IDs)
+    for (const c of enriched) {
+      if (!c.version_id || !c.document_id || !c.document_title) {
+        // Treat malformed as unsupported to avoid leaking bad provenance
+        return {
+          answer: UNSUPPORTED_ANSWER,
+          grounded: false,
+          confidence: 'low',
+          citations: [],
+        };
+      }
     }
 
     return {
       answer: text,
       grounded,
       confidence,
-      citations: finalCitations,
+      citations: enriched,
     };
   }
 }
