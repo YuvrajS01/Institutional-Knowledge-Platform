@@ -81,6 +81,10 @@ describe('RagAnswerService (P8-006) — integration', () => {
       { limit: 5 },
     );
 
+    // Debug
+    console.log('RAG result:', JSON.stringify(result, null, 2));
+    console.log('DocId:', docId, 'Title:', title, 'Query:', query);
+
     expect(result.grounded).toBe(true);
     expect(result.confidence).toBe('high');
     expect(result.answer).toContain('18 August 2026');
