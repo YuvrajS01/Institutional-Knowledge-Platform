@@ -6,23 +6,23 @@
 
 ## Current Phase
 
-Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings done; Phase 3 remainder P1 tasks pending.
+Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search done; Phase 3 remainder P1 tasks pending.
 
 ## Current Task
 
-**P5-004** (Generate/store embeddings) — implementation complete on task branch `feat/P5-004-generate-store-embeddings`; PR pending human approval.
+**P5-006** (Implement vector search) — implementation complete on task branch `feat/P5-006-vector-search`; PR pending human approval.
 
 ## Current Branch
 
-`feat/P5-004-generate-store-embeddings`
+`feat/P5-006-vector-search`
 
 ## Overall Status
 
-`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), and P5-005 (PostgreSQL full-text search) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG (P5-006→) still pending.
+`PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), and P5-006 (vector search) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining search/RAG (P5-007→) still pending.
 
 ## Last Completed Task
 
-P5-004 (Generate/store embeddings) — `apps/api/src/modules/documents/document-chunks.repository.ts` (now stores `embedding vector(1024)` via `::vector` cast) + `apps/worker/src/processing/document-chunks.repository.ts` (worker-side `vector(1024)` persistence) + `apps/worker/src/processing/processing.service.ts` (chunk → `EmbeddingProvider.embed` → `deleteByVersion`/`createMany` with embeddings, storage put + chunk persist before `COMPLETED` for retry safety, tenant-aware, idempotent, page-aware) + `document-chunks.repository.test.ts` embedding integration test + `processing.embeddings.unit.test.ts` 7 unit tests (chunk+embed, empty, wrong count, idempotent, page-aware, vector formatting); 255 tests passing.
+P5-006 (Implement vector search) — `apps/api/src/modules/search/vector-search.repository.ts` (pgvector cosine `embedding <=> $2::vector`, tenant-scoped `documents.institution_id`, `PUBLISHED` default, `::vector` cast, limit/offset, distance/similarity) + `vector-search.service.ts` (query `text` → `EmbeddingProvider.embed` → repository, `searchByEmbedding` direct) + `vector-search.repository.test.ts` 7 integration tests (semantic similarity ranking, empty, tenant isolation, status filter, validation, limit/offset) + `vector-search.service.test.ts` 4 unit tests (embed+delegate, empty, model/dims, direct); 266 tests passing.
 
 ## What Is Working
 
@@ -49,6 +49,11 @@ P5-004 (Generate/store embeddings) — `apps/api/src/modules/documents/document-
   - **`apps/api/src/modules/documents/document-chunks.repository.test.ts`**: added `stores and retrieves embeddings for chunks (P5-004)` — creates chunks, embeds via `createMockEmbeddingProvider`, inserts with `embedding`, asserts `embedding` string `'['` and `JSON.parse` 1024 dims.
   - **`apps/worker/src/processing/processing.embeddings.unit.test.ts`**: 7 unit tests (chunk+embed, empty→0 chunks+delete, wrong count throws, idempotent COMPLETED no re-embed, page-aware, vector formatting `::vector`, null).
   - `processing.repository.ts` / `processing.service.test.ts` unchanged (integration still passes via pgvector).
+- Vector search (P5-006):
+  - **`apps/api/src/modules/search/vector-search.repository.ts`**: `VectorSearchRepository extends TenantRepository` — `searchByEmbedding(institutionId, queryEmbedding, {limit, offset, statuses, departmentId, documentType})` builds tenant-scoped `WHERE d.institution_id=$1 AND c.embedding IS NOT NULL AND d.status=ANY($3)`, optional department/type filters, `ORDER BY c.embedding <=> $2::vector ASC LIMIT/OFFSET`, returns `VectorSearchResult` with `distance` (`<=>`) and `similarity` (`1-distance`), validates non-empty/finite embedding, `tenantId()` fail-fast.
+  - **`apps/api/src/modules/search/vector-search.service.ts`**: `VectorSearchService` — `search(institutionId, {text, limit, offset, statuses, departmentId, documentType})` validates `text.trim()`, embeds via `EmbeddingProvider` (`createEmbeddingProvider()` mock/local), delegates to repository; `searchByEmbedding` direct for P5-007 hybrid; exposes `modelName()`/`dimensions()`.
+  - **`apps/api/src/modules/search/vector-search.repository.test.ts`**: 7 integration tests (semantic similarity ranking via mock embeddings, empty, tenant isolation, PUBLISHED default + explicit DRAFT, validation, invalid tenant, limit/offset) — requires `pgvector/pgvector:pg17`.
+  - **`apps/api/src/modules/search/vector-search.service.test.ts`**: 4 unit tests (embed+delegate, empty throws, model/dims, direct).
 - Prior chunk storage (P5-001):
   - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
 - Prior chunking (P3-008):
@@ -56,12 +61,12 @@ P5-004 (Generate/store embeddings) — `apps/api/src/modules/documents/document-
 - Prior metadata interface (P3-005):
   - **`MetadataExtractor` contract** with Zod validation, `HeuristicMetadataExtractor` baseline.
 - Prior processing orchestration (P3-004):
-  - **Worker pipeline**: `document.process` job → tenant-scoped version lookup → download original → text extraction → OCR when inadequate → persist `extracted_text`/`ocr_status`/`page_count`/`processing_status` → write `extracted.txt` artifact + chunk/embed (idempotent, tenant-aware, retryable).
+  - **Worker pipeline**: `document.process` job → tenant-scoped version lookup → download original → text extraction → OCR when inadequate → persist `extracted_text`/`ocr_status`/`page_count`/`processing_status` → write `extracted.txt` artifact + chunk/embed + vector search (idempotent, tenant-aware, retryable).
 
 ## What Is Not Implemented
 
 - Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
-- Search remainder: vector search (P5-006), hybrid (P5-007), search API (P5-009), etc.
+- Search remainder: hybrid (P5-007), search API (P5-009), etc.
 - Phases 4, 6–10.
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
@@ -83,10 +88,10 @@ P5-004 (Generate/store embeddings) — `apps/api/src/modules/documents/document-
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 (PR #27). Task branch `feat/P5-004-generate-store-embeddings` adds generate/store embeddings, all checks green:
+`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 (PR #28). Task branch `feat/P5-006-vector-search` adds vector search, all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (255, +8 embedding store)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅ (13/13)  tests ✅ (266, +11 vector search)  build ✅ (8/8)  format ✅  migration ✅ (pgvector)
 ```
 
 ## Model Handoff Instructions
@@ -112,7 +117,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (255) |
+| Unit/integration tests | PASS (266) |
 | Migrations against Postgres (up/down/up) | PASS |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -136,6 +141,7 @@ When switching AI tools/models:
 | Embedding provider interface (mock, deterministic) | PASS (13) |
 | Local embedding adapter (Ollama/OpenAI, batching, env factory) | PASS (27) |
 | Generate/store embeddings (chunk → embed → pgvector) | PASS (8) |
+| Vector search (pgvector cosine, tenant, PUBLISHED) | PASS (11) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests | NOT STARTED (Phase 9) |
 | Security verification | NOT STARTED |
@@ -144,7 +150,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P5-004 merges, start **P5-006** (Implement vector search — P0) or **P4-001** (Implement review queue API — P0) or **P4-003** (Implement supersession/version APIs — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P5-006 merges, start **P5-007** (Implement hybrid retrieval — P0) or **P4-001** (Implement review queue API — P0) or **P4-003** (Implement supersession/version APIs — P0). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
 
 ## Last Updated
 
