@@ -11,6 +11,12 @@ export interface HybridSearchOptions {
   statuses?: DocumentStatus[];
   departmentId?: string;
   documentType?: DocumentType;
+  academicYear?: string;
+  course?: string;
+  semester?: number;
+  tag?: string;
+  publishedFrom?: Date;
+  publishedTo?: Date;
   lexicalWeight?: number;
   semanticWeight?: number;
 }
@@ -104,6 +110,12 @@ export class HybridSearchService {
         statuses,
         department_id: options.departmentId,
         document_type: options.documentType,
+        academic_year: options.academicYear,
+        course: options.course,
+        semester: options.semester,
+        tag: options.tag,
+        published_from: options.publishedFrom,
+        published_to: options.publishedTo,
       }),
       this.vectorRepository.searchByEmbedding(institutionId, queryEmbedding, {
         limit: 20,
@@ -111,6 +123,12 @@ export class HybridSearchService {
         statuses,
         departmentId: options.departmentId,
         documentType: options.documentType,
+        academicYear: options.academicYear,
+        course: options.course,
+        semester: options.semester,
+        tag: options.tag,
+        publishedFrom: options.publishedFrom,
+        publishedTo: options.publishedTo,
       }),
     ]);
 
