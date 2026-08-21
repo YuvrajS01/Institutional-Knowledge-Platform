@@ -22,7 +22,6 @@ let storage: ReturnType<typeof createS3ObjectStorage>;
 let service: ProcessingService;
 
 async function buildPdf(texts: string[]): Promise<Buffer> {
-  // @ts-expect-error pdf-lib is in worker deps, not in test tsconfig paths
   const { PDFDocument, StandardFonts } = await import('pdf-lib');
   const doc = await PDFDocument.create();
   const page = doc.addPage([400, 600]);
