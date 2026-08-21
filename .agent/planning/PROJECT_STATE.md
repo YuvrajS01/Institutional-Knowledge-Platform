@@ -6,42 +6,45 @@
 
 ## Current Phase
 
-Phase 9 (Hardening) — P9-001 E2E + P9-002 security regression + P9-008 MVP final gate DONE; Phase 8 (Institutional AI) P0 DONE — LLM provider + local adapter + permission-aware retrieval + context builder + RAG answer + citation contract + unsupported + /ai/ask API + Ask UI + prompt-injection + RAG eval + cross-tenant RAG DONE; Phase 3 P1 — P3-006 DONE on task branch, P3-007/009/010 still TODO.
+Phase 9 (Hardening) — P9-001 E2E + P9-002 security regression + P9-008 MVP final gate DONE; Phase 8 (Institutional AI) P0 DONE; Phase 3 P1 — P3-006 DONE (merged #53), P3-007 DONE on task branch `feat/P3-007-date-extraction`, P3-009/010 still TODO.
 
 ## Current Task
 
-**P3-006** (Implement metadata extraction provider — P1) — implementation complete on task branch `feat/P3-006-metadata-llm-provider`; 23 unit tests passing, typecheck/lint/build green, 438 tests total.
+**P3-007** (Implement date extraction — P1) — implementation complete on task branch `feat/P3-007-date-extraction`; 38 unit tests (17 heuristic + 21 LLM) passing, typecheck/lint/build green, 476 tests total.
 
 ## Current Branch
 
-`feat/P3-006-metadata-llm-provider`
+`feat/P3-007-date-extraction`
 
 ## Overall Status
 
-`PHASE_9_DONE` — all P0 tasks DONE and `docs/FINAL_IMPLEMENTATION_REPORT.md` at `main` `16f908c`; `PHASE_8_DONE` — P8-001/002/004/005/006/007/008/009/010/011/012/013 all DONE; `PHASE_6_DONE` for detail — P6-001/002 DONE; `PHASE_4_DONE` for publishing — P4-001/002/003/006 DONE; `PHASE_5_DONE` — P5-001/002/003/004/005/006/007/009/010/014 DONE; Phase 3 — P3-001..005/008 DONE, **P3-006 DONE on branch** (needs PR merge), P3-007/009/010 still TODO.
+`PHASE_9_DONE` — all P0 tasks DONE and `docs/FINAL_IMPLEMENTATION_REPORT.md` at `main` `19eb735` (P3-006 merged); `PHASE_8_DONE` — all P0 DONE; `PHASE_3_PROGRESS` — P3-001..006/008 DONE, **P3-007 DONE on branch** (needs PR), P3-009/010 TODO; `PHASE_4/5/6` remain P1 UI/reranker TODO.
 
 ## Last Completed Task
 
-P3-006 (Implement metadata extraction provider — P1) — `packages/processing/src/llm-metadata-extractor.ts` (`LlmMetadataExtractor` with `LLMProvider` + heuristic fallback, `normalize`, `extractJsonObject`, `SYSTEM_PROMPT` grounded, `maxTextChars` 4000, empty-text bypass) + `packages/processing/src/metadata-factory.ts` (`createMetadataExtractor` unified factory with `METADATA_PROVIDER`/`LLM_PROVIDER` env switch, heuristic default) + `llm-metadata-extractor.test.ts` 23 unit tests (valid JSON, fences, wrap, invalid/fallback, empty, truncate, tags/caps, course/semester, language, factory switch) + `.env.example` `METADATA_PROVIDER` docs + `packages/processing/src/index.ts` re-exports; 438 tests passing (+23), typecheck/lint/build green; pgvector on 5434 for verification.
+P3-007 (Implement date extraction — P1) — `packages/processing/src/dates.ts` (`ImportantDate`, `DateExtractionResult`, Zod `importantDateSchema`/`dateExtractionResultSchema`, `DateExtractor` interface) + `heuristic-date-extractor.ts` (`HeuristicDateExtractor` regex for `18 August 2026`/`August 18, 2026`/`2026-08-18`/`18/08/2026` with ordinal, dedup, sentence context, label/type inference for deadline/exam/registration/submission/holiday/event, confidence) + `llm-date-extractor.ts` (`LlmDateExtractor` with `LLMProvider` + heuristic fallback, `SYSTEM_PROMPT` strict JSON, `extractJsonObject`, `normalizeResult` caps 20, Zod, empty bypass) + `date-factory.ts` (`createDateExtractor` unified with `DATE_PROVIDER`/`METADATA_PROVIDER`/`LLM_PROVIDER`, heuristic default) + `heuristic-date-extractor.test.ts` 17 + `llm-date-extractor.test.ts` 21 tests + `.env.example` `DATE_PROVIDER` docs + `index.ts` re-exports; 476 tests passing (+38), typecheck/lint/build green; pgvector on 5434.
 
 ## What Is Working
 
-- Everything from Phases 0–2 + P3-001..P5-001 (merged into `main` via PRs #1–#24) plus all later merges through #52 (`main` at `16f908c` includes P9-001/002/008).
+- Everything from Phases 0–2 + P3-001..P5-001 merged through #53 (`main` at `19eb735` includes P3-006 LLM metadata provider).
 - Full-text search (P5-005), embedding interface (P5-002), local embedding adapter (P5-003), generate/store embeddings (P5-004), vector search (P5-006), hybrid retrieval (P5-007), search API (P5-009), search UI (P5-010), search eval (P5-014), review queue (P4-001), supersession (P4-003), publication permission (P4-006), document detail API/page (P6-001/002), LLM provider (P8-001), local LLM adapter (P8-002), permission-aware retrieval (P8-004), context builder (P8-005), RAG answer service (P8-006), citation contract (P8-007), unsupported (P8-008), /ai/ask API (P8-009), Ask UI (P8-010), prompt-injection (P8-011), RAG eval (P8-012), cross-tenant RAG (P8-013), E2E critical path (P9-001), security regression (P9-002), final report (P9-008) — all per FINAL_IMPLEMENTATION_REPORT.md.
-- **NEW P3-006 (branch)**:
-  - **`packages/processing/src/llm-metadata-extractor.ts`**: `LlmMetadataExtractor implements MetadataExtractor` — `name() → llm:model`, `extract({text,filename,mimeType})` builds truncated (4000) prompt with `SYSTEM_PROMPT` (strict JSON, 200-char title, 500-char summary, 3-10 tags, academicYear/course/semester/language/confidence), calls `LLMProvider.generate` (temperature 0, maxTokens 800, Abort via provider), `extractJsonObject` handles fences/wrapping (` ```json` + first `{` last `}`), `normalizeResult` coerces documentType/tags/semester/academicYear/course/language/confidence, Zod validates, language fallback via heuristic if null, empty-text bypass without LLM, any throw → heuristic fallback (`HeuristicMetadataExtractor`).
-  - **`packages/processing/src/metadata-factory.ts`**: `createMetadataExtractor({provider, llmProvider})` — reads `METADATA_PROVIDER` || `LLM_PROVIDER` || `heuristic`, lowercases, `isLlm` for `llm|local|ollama|openai|vllm|http|mock`, returns `HeuristicMetadataExtractor` default else `LlmMetadataExtractor` with `createLLMProvider` (`mock` default, `local` → Ollama `qwen2:7b`).
-  - **`packages/processing/src/llm-metadata-extractor.test.ts`**: 23 unit tests (modelName, valid JSON, empty→heuristic no call, invalid JSON→heuristic, malformed, fences, wrapping, throw, empty response, tags cap/lower, course upper/semester range, documentType case/invalid, truncate marker, Hindi, factory, schema-conformant loop, plus factory suite: heuristic default, llm/local aliases, explicit provider override, llmProvider option).
-  - **`packages/processing/src/index.ts`**: re-exports `{HeuristicMetadataExtractor, createHeuristicMetadataExtractor}`, `* from './llm-metadata-extractor.js'`, `* from './metadata-factory.js'`.
-  - **`.env.example`**: documents `LLM_PROVIDER/LLM_BASE_URL/LLM_MODEL/LLM_ENDPOINT` (expanded) and `METADATA_PROVIDER=heuristic|llm|local|ollama|openai|vllm|http|mock` with note that `llm` uses `LLM_*`.
-  - Prior heuristic baseline intact (`HeuristicMetadataExtractor` 20 tests) — now superseded by LLM provider when `METADATA_PROVIDER=llm`.
+- **NEW P3-007 (branch)**:
+  - **`packages/processing/src/dates.ts`**: `IMPORTANT_DATE_TYPES`/`ImportantDate`/`DateExtractionInput/Result`/`importantDateSchema`/`dateExtractionResultSchema`/`DateExtractor` interface (TECHNICAL_SPEC §8, AI_LLM §12, PRD FR-004).
+  - **`packages/processing/src/heuristic-date-extractor.ts`**: `HeuristicDateExtractor` — `MONTHS`/`MONTH_DAY_YEAR`/`ISO`/`DMY_SLASH` regexes, `isValidDate`/`toIso`, `extractSentence` 500-cap, `inferLabelAndType` (deadline/last date→DEADLINE etc), `findMatches` dedup, `extract` maps to `ImportantDate` with context/confidence, overall confidence via max.
+  - **`packages/processing/src/llm-date-extractor.ts`**: `LlmDateExtractor` — `SYSTEM_PROMPT` strict JSON (`dates[]` with raw/isoDate/label/type/context/confidence, provider llm), `truncateText` 4000, `extractJsonObject` fences, `normalizeResult` coerces type (IMPORTANT_DATE_TYPES), ISO regex, caps 20, Zod, empty bypass without LLM, throw→heuristic fallback.
+  - **`packages/processing/src/date-factory.ts`**: `createDateExtractor({provider,llmProvider})` — reads `DATE_PROVIDER`||`METADATA_PROVIDER`||`LLM_PROVIDER`||`heuristic`, `isLlm` for `llm|local|ollama|openai|vllm|http|mock`, returns `HeuristicDateExtractor` default else `LlmDateExtractor` with `createLLMProvider`.
+  - **`packages/processing/src/heuristic-date-extractor.test.ts`**: 17 tests (provider name, 18 Aug 2026 deadline, August 18 2026, ISO 2026-08-18, DMY 18/08/2026, dash/dot, ordinal 18th, exam label, empty, empty text, dedup, multiple 3, context 500, invalid 31 Feb null, schema-conformant loop, schema rejects).
+  - **`packages/processing/src/llm-date-extractor.test.ts`**: 21 unit + factory suite 8 → 29? actually 21 tests total covering modelName, valid JSON, empty→heuristic no call, invalid JSON→heuristic, fences, wrap, throw, empty response, no dates, caps 20, type case, truncate, createLlm, schema loop + factory: heuristic default, DATE_PROVIDER=llm/local aliases, fallback to METADATA/LLM, explicit override, llmProvider option.
+  - **`.env.example`**: adds `DATE_PROVIDER=heuristic|llm|local|...` docs.
+  - **`packages/processing/src/index.ts`**: re-exports `dates`, `HeuristicDateExtractor`/`createHeuristicDateExtractor`, `date-factory` (`createDateExtractor` unified), `llm-date-extractor`.
+- Prior P3-006: LlmMetadataExtractor + metadata-factory (23 tests) still passing.
 
 ## What Is Not Implemented
 
-- Phase 3 remainder: date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
+- Phase 3 remainder: retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
 - Search remainder: reranker (P5-008), filters/facets (P5-011), search analytics (P5-012), unresolved (P5-013).
 - Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005).
-- Phases 6 remainder: summary (P6-003 depends P3-006), important dates (P6-004 depends P3-007), bookmarks (P6-005), related (P6-006 depends P5-008), share (P6-007).
+- Phases 6 remainder: summary (P6-003 now unblocked by P3-006), important dates API/UI (P6-004 now unblocked by P3-007), bookmarks (P6-005), related (P6-006 depends P5-008), share (P6-007).
 - Phase 7 notifications (P7-001→006).
 - P8-003 cloud LLM adapter (P1), P9-003/004/005/006/007 (P1 load/metrics/backup/deploy).
 - PDF page rasterization for scanned-PDF OCR (backlogged).
@@ -49,7 +52,7 @@ P3-006 (Implement metadata extraction provider — P1) — `packages/processing/
 ## Active Blockers
 
 - PR requires human approval to merge into `main` (repository merge policy).
-- Host Postgres (18.6 on 5432) lacks `pgvector` — use docker `pgvector/pgvector:pg17` on 5434 (`DATABASE_URL=postgresql://postgres:postgres@localhost:5434/institutional_knowledge`) and `REDIS_URL=redis://localhost:6379` for verification; CI uses pgvector service and is green. Host `docker compose` postgres fails to bind 5432 when host postgres running — use separate `ikp-pgvector-test-5434` container.
+- Host Postgres (18.6 on 5432) lacks `pgvector` — use docker `pgvector/pgvector:pg17` on 5434 (`DATABASE_URL=postgresql://postgres:postgres@localhost:5434/institutional_knowledge`) and `REDIS_URL=redis://localhost:6379`; CI green. Host docker compose postgres fails to bind 5432 when host postgres running — use `ikp-pgvector-test-5434`.
 
 ## Important Decisions
 
@@ -59,15 +62,15 @@ P3-006 (Implement metadata extraction provider — P1) — `packages/processing/
 - Stack: pnpm workspace; Fastify (API); Next.js (web); Vitest; ESLint flat config; Prettier; node-pg-migrate; PostgreSQL/pgvector (pgvector/pg17, `vector(1024)` for BGE-M3 1024 dims); Redis; MinIO (S3-compatible).
 - API and worker use distinct port variables (`API_PORT`, `WORKER_PORT`) because they share the repo `.env`.
 - Migrations are CommonJS `.js` files under `infra/migrations/`; ESLint flat config declares CJS globals for that directory.
-- AI providers remain replaceable through adapters/interfaces; `METADATA_PROVIDER` env mirrors `EMBEDDING_PROVIDER`/`LLM_PROVIDER` pattern.
+- AI providers remain replaceable via adapters; `METADATA_PROVIDER`/`DATE_PROVIDER` mirror `EMBEDDING_PROVIDER`/`LLM_PROVIDER` (ADR-003 local-first).
 - Git uses task branches and pull requests; merging into `main` requires the repository's approval policy.
 
 ## Current Git State
 
-`main` at `16f908c` (Merge PR #52 P9-008 MVP final gate). Task branch `feat/P3-006-metadata-llm-provider` adds LLM metadata extractor (23 tests, .env.example, index re-exports), all checks green:
+`main` at `19eb735` (Merge PR #53 P3-006). Task branch `feat/P3-007-date-extraction` adds date extraction (38 tests, .env.example, index re-exports), all checks green:
 
 ```text
-lint ✅  typecheck ✅  tests ✅ (438, +23)  build ✅  format ✅  migration ✅ (pgvector on 5434)
+lint ✅  typecheck ✅  tests ✅ (476, +38)  build ✅  format ✅  migration ✅ (pgvector on 5434)
 ```
 
 ## Model Handoff Instructions
@@ -93,7 +96,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (438) |
+| Unit/integration tests | PASS (476) |
 | Migrations against Postgres (up/down/up) | PASS (5434 pgvector) |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -133,6 +136,7 @@ When switching AI tools/models:
 | Context builder (maxTokens, citations, no-answer) | PASS (8) |
 | RAG answer service (grounded, citations, tenant) | PASS (11) |
 | Metadata LLM provider (P3-006) | PASS (23) |
+| Date extraction (P3-007) | PASS (38) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests (P9-001) | PASS (10/17 flows) |
 | Security regression (P9-002) | PASS (7) |
@@ -140,7 +144,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P3-006 merges, start **P3-007** (Implement date extraction — P1, depends P3-006) or **P6-003** (Add document summary display — P1, now unblocked by P3-006) or **P4-004** (Build approval queue UI — P1) or **P5-008** (Implement reranker — P1). Phase 3 date extraction unlocks `P6-004` important dates and `P7-006` deadline reminders.
+After P3-007 merges, start **P6-004** (Add important dates API/UI — P1, now unblocked), **P6-003** (Add document summary display — P1, unblocked by P3-006), **P4-004** (Build approval queue UI — P1), or **P5-008** (Implement reranker — P1).
 
 ## Last Updated
 

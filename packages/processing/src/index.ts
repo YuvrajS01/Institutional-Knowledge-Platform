@@ -1,8 +1,12 @@
 export * from './adequacy.js';
 export * from './chunker.js';
+export * from './dates.js';
+export { HeuristicDateExtractor, createHeuristicDateExtractor, createDateExtractor as createHeuristicDateExtractorLegacy } from './heuristic-date-extractor.js';
+export * from './date-factory.js';
 export * from './embedding.js';
 export { HeuristicMetadataExtractor, createMetadataExtractor as createHeuristicMetadataExtractor } from './heuristic-metadata-extractor.js';
 export * from './llm.js';
+export * from './llm-date-extractor.js';
 export * from './llm-metadata-extractor.js';
 export * from './local-embedding-provider.js';
 export * from './local-llm-provider.js';
