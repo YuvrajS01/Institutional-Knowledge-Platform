@@ -7,6 +7,7 @@ import { AppError } from '../../common/errors.js';
 import type { DbPool } from '../../infrastructure/db/db-pool.js';
 
 import { HybridSearchService } from './hybrid-search.service.js';
+import { SearchAnalyticsRepository } from './search-analytics.repository.js';
 
 const searchQuerySchema = z.object({
   q: z.string().trim().min(1).max(200).optional(),
@@ -48,6 +49,7 @@ export async function registerSearchRoutes(
   options: SearchModuleOptions,
 ): Promise<void> {
   const hybrid = new HybridSearchService(options.pool);
+  const analytics = new SearchAnalyticsRepository(options.pool);
 
   app.get(
     '/search',
@@ -99,6 +101,21 @@ export async function registerSearchRoutes(
         publishedTo: parsed.data.published_to ? new Date(parsed.data.published_to) : undefined,
       });
       const latencyMs = Date.now() - start;
+
+      // Analytics: best-effort log, do not fail search on analytics error
+      const actorUser = (request as unknown as { user?: { id: string } }).user;
+      if (actorUser?.id) {
+        analytics
+          .log(institutionId, actorUser.id, queryText, results.length, latencyMs, {
+            department_id: parsed.data.department_id,
+            document_type: parsed.data.document_type,
+            academic_year: parsed.data.academic_year,
+            course: parsed.data.course,
+            semester: parsed.data.semester,
+            tag: parsed.data.tag,
+          })
+          .catch(() => {});
+      }
 
       // Facets: department + document_type counts from results (MVP, no separate agg)
       const deptCounts = new Map<string, { id: string; name: string; count: number }>();
