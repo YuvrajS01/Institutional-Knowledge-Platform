@@ -113,6 +113,7 @@ export interface DocumentDetailView {
   created_by: string;
   created_at: string;
   updated_at: string;
+  summary: string | null;
   metadata: {
     academic_year: string | null;
     course: string | null;
@@ -120,6 +121,19 @@ export interface DocumentDetailView {
     audience: Record<string, unknown>;
     tags: string[];
   };
+}
+
+function extractSummary(text: string | null): string | null {
+  if (!text) return null;
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const sentences = trimmed.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
+  if (sentences.length >= 2) {
+    const summary = sentences.slice(0, 2).join(' ').trim();
+    return summary.length > 500 ? `${summary.slice(0, 500).trimEnd()}…` : summary;
+  }
+  const fallback = trimmed.slice(0, 300).trim();
+  return fallback.length === 0 ? null : fallback;
 }
 
 /**
@@ -470,6 +484,29 @@ export class DocumentsService {
 
     const isCurrent = document.status === 'PUBLISHED' && !document.superseded_by_document_id;
 
+    // Summary: prefer extracted_metadata.summary stored by AI, else heuristic from extracted_text
+    let summary: string | null = null;
+    if (metadata?.extra) {
+      const extra = metadata.extra as Record<string, unknown>;
+      const candidate =
+        (extra as { summary?: unknown }).summary ??
+        (extra as { extracted_metadata?: { summary?: unknown } }).extracted_metadata?.summary ??
+        (extra as { extractedMetadata?: { summary?: unknown } }).extractedMetadata?.summary;
+      if (typeof candidate === 'string' && candidate.trim()) {
+        summary = candidate.trim().slice(0, 500);
+      }
+    }
+    if (!summary && document.current_version_id) {
+      try {
+        const versions = await this.versions.listByDocumentId(actor.institutionId, documentId);
+        const current = versions.find((v) => v.id === document.current_version_id);
+        const text = current?.extracted_text ?? versions.find((v) => v.extracted_text && v.extracted_text.trim())?.extracted_text ?? null;
+        summary = extractSummary(text);
+      } catch {
+        // leave summary null
+      }
+    }
+
     return {
       id: document.id,
       title: document.title,
@@ -488,6 +525,7 @@ export class DocumentsService {
       created_by: document.created_by,
       created_at: document.created_at.toISOString(),
       updated_at: document.updated_at.toISOString(),
+      summary,
       metadata: {
         academic_year: metadata?.academic_year ?? null,
         course: metadata?.course ?? null,
