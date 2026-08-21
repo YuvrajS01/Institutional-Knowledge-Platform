@@ -56,6 +56,46 @@ type LoadState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; document: DocumentDetail; versions: Version[] };
 
+function RelatedDocuments({ documentId }: { documentId: string }) {
+  const [related, setRelated] = useState<Array<{
+    document_id: string;
+    title: string;
+    score: number;
+  }> | null>(null);
+
+  useEffect(() => {
+    const session = getSession();
+    if (!session) return;
+    apiRequest<Array<{ document_id: string; title: string; score: number }>>(
+      `/documents/${documentId}/related`,
+      {
+        token: session.accessToken,
+        institutionId: session.institutionId,
+      },
+    )
+      .then((data) => setRelated(Array.isArray(data) ? data : []))
+      .catch(() => setRelated([]));
+  }, [documentId]);
+
+  if (!related || related.length === 0) return null;
+
+  return (
+    <div className="card">
+      <h2>Related documents</h2>
+      <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+        {related.map((doc) => (
+          <li key={doc.document_id} style={{ marginBottom: '0.5rem' }}>
+            <Link href={`/documents/${doc.document_id}`}>{doc.title}</Link>{' '}
+            <span className="muted" style={{ fontSize: '0.85rem' }}>
+              Score {doc.score.toFixed(3)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function DocumentDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -310,6 +350,8 @@ export default function DocumentDetailPage() {
           </>
         )}
       </div>
+
+      <RelatedDocuments documentId={document.id} />
 
       <div className="card">
         <h2>Actions</h2>
