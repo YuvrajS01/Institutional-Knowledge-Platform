@@ -94,8 +94,6 @@ describe('Load test: search (P9-003)', () => {
     expect(avgLatency).toBeLessThan(500);
     expect(duration).toBeLessThan(10_000);
 
-    // Log for CI visibility
-    // eslint-disable-next-line no-console
     console.log(`Search load: ${concurrency} concurrent in ${duration}ms (avg ${avgLatency.toFixed(1)}ms)`);
   }, 30_000);
 
@@ -118,7 +116,6 @@ describe('Load test: search (P9-003)', () => {
     }
 
     expect(duration).toBeLessThan(5000);
-    // eslint-disable-next-line no-console
     console.log(`Filtered search load: ${concurrency} in ${duration}ms`);
   }, 30_000);
 });
