@@ -32,6 +32,15 @@ interface DocumentDetail {
     semester: number | null;
     audience: Record<string, unknown>;
     tags: string[];
+    extracted_dates: Array<{
+      raw: string;
+      isoDate?: string | null;
+      iso_date?: string | null;
+      label: string | null;
+      type: string | null;
+      context: string | null;
+      confidence: number;
+    }>;
   };
 }
 
@@ -212,6 +221,39 @@ export default function DocumentDetailPage() {
         {document.metadata.semester && (
           <p>
             <strong>Semester:</strong> {document.metadata.semester}
+          </p>
+        )}
+      </div>
+
+      <div className="card">
+        <h2>Important dates</h2>
+        {document.metadata.extracted_dates && document.metadata.extracted_dates.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Label</th>
+                <th>Type</th>
+                <th>Raw</th>
+              </tr>
+            </thead>
+            <tbody>
+              {document.metadata.extracted_dates.map((d, idx) => {
+                const iso = (d.isoDate ?? d.iso_date) as string | null;
+                return (
+                  <tr key={`${d.raw}-${idx}`}>
+                    <td>{iso ? new Date(iso).toLocaleDateString() : '—'}</td>
+                    <td>{d.label ?? '—'}</td>
+                    <td>{d.type ? <span className={`badge ${d.type.toLowerCase()}`}>{d.type}</span> : '—'}</td>
+                    <td>{d.raw}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        ) : (
+          <p className="muted">
+            No important dates extracted for this document. See <Link href="/dates">all important dates</Link>.
           </p>
         )}
       </div>

@@ -109,7 +109,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P6-001 | P0 | DONE | Build document detail API | P2-004,P4-003 |
 | P6-002 | P0 | DONE | Build document detail page | P6-001 |
 | P6-003 | P1 | DONE | Add document summary display | P3-006,P6-002 |
-| P6-004 | P1 | TODO | Add important dates API/UI | P3-007 |
+| P6-004 | P1 | DONE | Add important dates API/UI | P3-007 |
 | P6-005 | P1 | TODO | Add bookmarks | P6-001 |
 | P6-006 | P1 | TODO | Add related documents | P5-008,P6-001 |
 | P6-007 | P1 | TODO | Add share links | P6-001 |

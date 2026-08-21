@@ -7,6 +7,7 @@ export interface DocumentMetadataUpdateInput {
   semester?: number | null;
   audience?: Record<string, unknown> | null;
   tags?: string[];
+  extracted_dates?: unknown[];
   extra?: Record<string, unknown> | null;
 }
 
@@ -18,6 +19,7 @@ export interface DocumentMetadataRow {
   semester: number | null;
   audience: Record<string, unknown>;
   tags: unknown[];
+  extracted_dates: unknown[];
   extra: Record<string, unknown>;
 }
 
@@ -38,14 +40,16 @@ export class DocumentMetadataRepository extends TenantRepository {
   ): Promise<void> {
     this.tenantId(institutionId);
     await this.pool.query(
-      `INSERT INTO document_metadata (document_id, academic_year, course, semester, audience, extra)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+      `INSERT INTO document_metadata (document_id, academic_year, course, semester, audience, tags, extracted_dates, extra)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         documentId,
         input.academic_year ?? null,
         input.course ?? null,
         input.semester ?? null,
         input.audience ?? {},
+        JSON.stringify(input.tags ?? []),
+        JSON.stringify(input.extracted_dates ?? []),
         input.extra ?? {},
       ],
     );
@@ -60,12 +64,13 @@ export class DocumentMetadataRepository extends TenantRepository {
     await this.pool.query(
       `UPDATE document_metadata
        SET academic_year = COALESCE($2, academic_year),
-           course = COALESCE($3, course),
-           semester = COALESCE($4, semester),
-           audience = COALESCE($5, audience),
-           tags = COALESCE($6, tags),
-           extra = COALESCE($7, extra),
-           updated_at = now()
+            course = COALESCE($3, course),
+            semester = COALESCE($4, semester),
+            audience = COALESCE($5, audience),
+            tags = COALESCE($6, tags),
+            extracted_dates = COALESCE($7, extracted_dates),
+            extra = COALESCE($8, extra),
+            updated_at = now()
        WHERE document_id = $1`,
       [
         documentId,
@@ -74,6 +79,7 @@ export class DocumentMetadataRepository extends TenantRepository {
         input.semester === undefined ? null : input.semester,
         input.audience === undefined ? null : input.audience,
         input.tags === undefined ? null : JSON.stringify(input.tags),
+        input.extracted_dates === undefined ? null : JSON.stringify(input.extracted_dates),
         input.extra === undefined ? null : input.extra,
       ],
     );
@@ -85,7 +91,7 @@ export class DocumentMetadataRepository extends TenantRepository {
   ): Promise<DocumentMetadataRow | null> {
     this.tenantId(institutionId);
     const result = await this.pool.query(
-      `SELECT id, document_id, academic_year, course, semester, audience, tags, extra
+      `SELECT id, document_id, academic_year, course, semester, audience, tags, extracted_dates, extra
        FROM document_metadata
        WHERE document_id = $1`,
       [documentId],
@@ -102,6 +108,7 @@ export class DocumentMetadataRepository extends TenantRepository {
       semester: (row.semester as number | null) ?? null,
       audience: (row.audience as Record<string, unknown>) ?? {},
       tags: (row.tags as unknown[]) ?? [],
+      extracted_dates: (row.extracted_dates as unknown[]) ?? [],
       extra: (row.extra as Record<string, unknown>) ?? {},
     };
   }
