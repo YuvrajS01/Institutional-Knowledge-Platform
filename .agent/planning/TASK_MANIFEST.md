@@ -119,7 +119,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | ID | Pri | Status | Task | Depends On |
 |---|---|---|---|---|
 | P7-001 | P1 | DONE | Create notification schema | P1-002 |
-| P7-002 | P1 | TODO | Implement notification service | P7-001 |
+| P7-002 | P1 | DONE | Implement notification service | P7-001 |
 | P7-003 | P1 | TODO | Implement in-app notifications | P7-002 |
 | P7-004 | P1 | TODO | Implement email adapter | P7-002 |
 | P7-005 | P1 | TODO | Add relevance rules | P7-002,P1-005 |
