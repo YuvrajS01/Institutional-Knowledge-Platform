@@ -22,8 +22,10 @@ interface DocumentDetail {
   superseded_at: string | null;
   superseded_reason: string | null;
   current_version_id: string | null;
+  created_by: string;
   created_at: string;
   updated_at: string;
+  summary: string | null;
   metadata: {
     academic_year: string | null;
     course: string | null;
@@ -136,6 +138,22 @@ export default function DocumentDetailPage() {
         {document.published_at ? new Date(document.published_at).toLocaleDateString() : 'Unpublished'}
       </p>
 
+      {document.summary ? (
+        <div className="card" style={{ background: '#f8fafc', borderColor: '#e2e8f0' }}>
+          <h2 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>Summary</h2>
+          <p style={{ margin: 0, lineHeight: '1.6' }}>{document.summary}</p>
+          <p className="muted" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+            AI-generated summary — review before relying on it. Source remains the document.
+          </p>
+        </div>
+      ) : (
+        <div className="card" style={{ background: '#fffbeb', borderColor: '#fde68a' }}>
+          <p className="muted" style={{ margin: 0 }}>
+            No summary available yet. Processing may still be queued.
+          </p>
+        </div>
+      )}
+
       {document.superseded_by && (
         <div className="card" style={{ borderColor: '#f59e0b', background: '#fffbeb' }}>
           <p>
@@ -226,7 +244,7 @@ export default function DocumentDetailPage() {
 
       <div className="card">
         <h2>Actions</h2>
-        <p className="muted">Source of truth is the approved institutional document. AI summary will be shown here when available (P6-003).</p>
+        <p className="muted">Source of truth is the approved institutional document.</p>
         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
           <button
             type="button"
