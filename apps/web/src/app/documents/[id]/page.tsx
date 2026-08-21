@@ -143,8 +143,11 @@ export default function DocumentDetailPage() {
 
       <h1>{document.title}</h1>
       <p className="muted">
-        {document.department ? document.department.name : 'No department'} · {document.document_type} ·{' '}
-        {document.published_at ? new Date(document.published_at).toLocaleDateString() : 'Unpublished'}
+        {document.department ? document.department.name : 'No department'} ·{' '}
+        {document.document_type} ·{' '}
+        {document.published_at
+          ? new Date(document.published_at).toLocaleDateString()
+          : 'Unpublished'}
       </p>
 
       {document.summary ? (
@@ -167,10 +170,15 @@ export default function DocumentDetailPage() {
         <div className="card" style={{ borderColor: '#f59e0b', background: '#fffbeb' }}>
           <p>
             <strong>Superseded</strong> by{' '}
-            <Link href={`/documents/${document.superseded_by.id}`}>{document.superseded_by.title || document.superseded_by.id}</Link>
-            {document.superseded_at && ` on ${new Date(document.superseded_at).toLocaleDateString()}`}
+            <Link href={`/documents/${document.superseded_by.id}`}>
+              {document.superseded_by.title || document.superseded_by.id}
+            </Link>
+            {document.superseded_at &&
+              ` on ${new Date(document.superseded_at).toLocaleDateString()}`}
           </p>
-          {document.superseded_reason && <p className="muted">Reason: {document.superseded_reason}</p>}
+          {document.superseded_reason && (
+            <p className="muted">Reason: {document.superseded_reason}</p>
+          )}
           <p className="muted">This version is no longer current. See the current version above.</p>
         </div>
       )}
@@ -190,11 +198,15 @@ export default function DocumentDetailPage() {
           <strong>Type:</strong> {document.document_type}
         </p>
         <p>
-          <strong>Published:</strong> {document.published_at ? new Date(document.published_at).toLocaleString() : 'Not published'}
+          <strong>Published:</strong>{' '}
+          {document.published_at
+            ? new Date(document.published_at).toLocaleString()
+            : 'Not published'}
         </p>
         {document.effective_from && (
           <p>
-            <strong>Effective from:</strong> {new Date(document.effective_from).toLocaleDateString()}
+            <strong>Effective from:</strong>{' '}
+            {new Date(document.effective_from).toLocaleDateString()}
           </p>
         )}
         {document.effective_to && (
@@ -206,7 +218,8 @@ export default function DocumentDetailPage() {
           <strong>Current version:</strong> {document.current_version_id ?? 'None'}
         </p>
         <p>
-          <strong>Tags:</strong> {document.metadata.tags.length > 0 ? document.metadata.tags.join(', ') : 'None'}
+          <strong>Tags:</strong>{' '}
+          {document.metadata.tags.length > 0 ? document.metadata.tags.join(', ') : 'None'}
         </p>
         {document.metadata.academic_year && (
           <p>
@@ -244,7 +257,13 @@ export default function DocumentDetailPage() {
                   <tr key={`${d.raw}-${idx}`}>
                     <td>{iso ? new Date(iso).toLocaleDateString() : '—'}</td>
                     <td>{d.label ?? '—'}</td>
-                    <td>{d.type ? <span className={`badge ${d.type.toLowerCase()}`}>{d.type}</span> : '—'}</td>
+                    <td>
+                      {d.type ? (
+                        <span className={`badge ${d.type.toLowerCase()}`}>{d.type}</span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td>{d.raw}</td>
                   </tr>
                 );
@@ -253,7 +272,8 @@ export default function DocumentDetailPage() {
           </table>
         ) : (
           <p className="muted">
-            No important dates extracted for this document. See <Link href="/dates">all important dates</Link>.
+            No important dates extracted for this document. See{' '}
+            <Link href="/dates">all important dates</Link>.
           </p>
         )}
       </div>
@@ -263,24 +283,31 @@ export default function DocumentDetailPage() {
         {versions.length === 0 ? (
           <p className="muted">No versions.</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Version</th>
-                <th>Created</th>
-                <th>Current</th>
-              </tr>
-            </thead>
-            <tbody>
-              {versions.map((v) => (
-                <tr key={v.id}>
-                  <td>v{v.version_number}</td>
-                  <td>{new Date(v.created_at).toLocaleString()}</td>
-                  <td>{v.is_current ? '✓ Current' : ''}</td>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>Version</th>
+                  <th>Created</th>
+                  <th>Current</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {versions.map((v) => (
+                  <tr key={v.id}>
+                    <td>v{v.version_number}</td>
+                    <td>{new Date(v.created_at).toLocaleString()}</td>
+                    <td>{v.is_current ? '✓ Current' : ''}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ marginTop: '0.75rem' }}>
+              <Link href={`/documents/${document.id}/versions`} className="muted">
+                View full version history →
+              </Link>
+            </p>
+          </>
         )}
       </div>
 
