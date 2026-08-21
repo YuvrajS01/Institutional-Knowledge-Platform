@@ -67,32 +67,25 @@ export class RelevanceRules {
       semester: r.semester,
     }));
 
-    // If no audience specified, notify all (MVP default)
-    if (!context.audience || Object.keys(context.audience).length === 0) {
-      // For documents with no audience, notify all students/faculty (not admins only)
-      // But for MVP, notify all members
-      return members;
-    }
-
     const audience = context.audience;
-
-    // If audience is empty arrays, treat as all
-    const hasRoles = audience.roles && audience.roles.length > 0;
-    const hasCourses = audience.courses && audience.courses.length > 0;
-    const hasSemesters = audience.semesters && audience.semesters.length > 0;
+    const hasRoles = Boolean(audience?.roles && audience.roles.length > 0);
+    const hasCourses = Boolean(audience?.courses && audience.courses.length > 0);
+    const hasSemesters = Boolean(audience?.semesters && audience.semesters.length > 0);
     const hasDepartments =
-      (audience.departments && audience.departments.length > 0) || Boolean(context.departmentId);
+      Boolean(audience?.departments && audience.departments.length > 0) ||
+      Boolean(context.departmentId);
 
+    // If no audience and no department filter, notify all (MVP default)
     if (!hasRoles && !hasCourses && !hasSemesters && !hasDepartments) {
       return members;
     }
 
     return members.filter((m) => {
-      if (hasRoles && audience.roles!.includes(m.role)) return true;
-      if (hasCourses && m.course && audience.courses!.includes(m.course)) return true;
-      if (hasSemesters && m.semester !== null && audience.semesters!.includes(m.semester))
+      if (hasRoles && audience!.roles!.includes(m.role)) return true;
+      if (hasCourses && m.course && audience!.courses!.includes(m.course)) return true;
+      if (hasSemesters && m.semester !== null && audience!.semesters!.includes(m.semester))
         return true;
-      if (audience.departments && m.departmentId && audience.departments.includes(m.departmentId))
+      if (audience?.departments && m.departmentId && audience.departments.includes(m.departmentId))
         return true;
       if (context.departmentId && m.departmentId === context.departmentId) return true;
       return false;
@@ -101,25 +94,25 @@ export class RelevanceRules {
 
   isRelevant(member: UserMembership, context: RelevanceContext): boolean {
     const audience = context.audience;
-    if (!audience || Object.keys(audience).length === 0) return true;
-    const hasAny =
-      (audience.roles && audience.roles.length > 0) ||
-      (audience.courses && audience.courses.length > 0) ||
-      (audience.semesters && audience.semesters.length > 0) ||
-      (audience.departments && audience.departments.length > 0) ||
+    const hasRoles = Boolean(audience?.roles && audience.roles.length > 0);
+    const hasCourses = Boolean(audience?.courses && audience.courses.length > 0);
+    const hasSemesters = Boolean(audience?.semesters && audience.semesters.length > 0);
+    const hasDepartments =
+      Boolean(audience?.departments && audience.departments.length > 0) ||
       Boolean(context.departmentId);
+    const hasAny = hasRoles || hasCourses || hasSemesters || hasDepartments;
     if (!hasAny) return true;
 
-    if (audience.roles && audience.roles.includes(member.role)) return true;
-    if (audience.courses && member.course && audience.courses.includes(member.course)) return true;
+    if (hasRoles && audience!.roles!.includes(member.role)) return true;
+    if (hasCourses && member.course && audience!.courses!.includes(member.course)) return true;
     if (
-      audience.semesters &&
+      hasSemesters &&
       member.semester !== null &&
-      audience.semesters.includes(member.semester)
+      audience!.semesters!.includes(member.semester)
     )
       return true;
     if (
-      audience.departments &&
+      audience?.departments &&
       member.departmentId &&
       audience.departments.includes(member.departmentId)
     )
