@@ -9,6 +9,12 @@ export interface VectorSearchOptions {
   statuses?: DocumentStatus[];
   departmentId?: string;
   documentType?: DocumentType;
+  academicYear?: string;
+  course?: string;
+  semester?: number;
+  tag?: string;
+  publishedFrom?: Date;
+  publishedTo?: Date;
 }
 
 export interface VectorSearchResult {
@@ -88,6 +94,36 @@ export class VectorSearchRepository extends TenantRepository {
       params.push(options.documentType);
       paramIndex++;
     }
+    if (options.academicYear) {
+      where.push(`m.academic_year = $${paramIndex}`);
+      params.push(options.academicYear);
+      paramIndex++;
+    }
+    if (options.course) {
+      where.push(`m.course = $${paramIndex}`);
+      params.push(options.course);
+      paramIndex++;
+    }
+    if (options.semester !== undefined) {
+      where.push(`m.semester = $${paramIndex}`);
+      params.push(options.semester);
+      paramIndex++;
+    }
+    if (options.tag) {
+      where.push(`m.tags @> $${paramIndex}::jsonb`);
+      params.push(JSON.stringify([options.tag]));
+      paramIndex++;
+    }
+    if (options.publishedFrom) {
+      where.push(`d.published_at >= $${paramIndex}`);
+      params.push(options.publishedFrom);
+      paramIndex++;
+    }
+    if (options.publishedTo) {
+      where.push(`d.published_at <= $${paramIndex}`);
+      params.push(options.publishedTo);
+      paramIndex++;
+    }
 
     const limitIndex = paramIndex++;
     const offsetIndex = paramIndex++;
@@ -115,6 +151,7 @@ export class VectorSearchRepository extends TenantRepository {
       FROM document_chunks c
       JOIN document_versions v ON v.id = c.document_version_id
       JOIN documents d ON d.id = v.document_id
+      LEFT JOIN document_metadata m ON m.document_id = d.id
       WHERE ${whereSql}
       ORDER BY c.embedding <=> $2::vector ASC
       LIMIT $${limitIndex} OFFSET $${offsetIndex}

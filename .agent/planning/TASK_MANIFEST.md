@@ -97,7 +97,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P5-008 | P1 | DONE | Implement reranker interface/adapter | P5-007 |
 | P5-009 | P0 | DONE | Implement search API | P5-007 |
 | P5-010 | P0 | DONE | Build search results UI | P5-009 |
-| P5-011 | P1 | TODO | Add filters/facets | P5-009 |
+| P5-011 | P1 | DONE | Add filters/facets | P5-009 |
 | P5-012 | P1 | TODO | Add search analytics | P5-009 |
 | P5-013 | P1 | TODO | Add unresolved-search workflow | P5-012 |
 | P5-014 | P0 | DONE | Build search evaluation set | P5-007 |

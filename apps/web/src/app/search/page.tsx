@@ -24,6 +24,7 @@ interface SearchResponse {
   results: SearchResult[];
   facets: {
     departments: { id: string; name: string; count: number }[];
+    document_types?: { type: string; count: number }[];
   };
 }
 
@@ -52,15 +53,34 @@ function SearchContent() {
   const [query, setQuery] = useState(initialQuery);
   const [departmentId, setDepartmentId] = useState(searchParams.get('department_id') ?? '');
   const [documentType, setDocumentType] = useState(searchParams.get('document_type') ?? '');
+  const [academicYear, setAcademicYear] = useState(searchParams.get('academic_year') ?? '');
+  const [course, setCourse] = useState(searchParams.get('course') ?? '');
+  const [semester, setSemester] = useState(searchParams.get('semester') ?? '');
+  const [tag, setTag] = useState(searchParams.get('tag') ?? '');
+  const [showAdvanced, setShowAdvanced] = useState(
+    Boolean(
+      searchParams.get('academic_year') ||
+        searchParams.get('course') ||
+        searchParams.get('semester') ||
+        searchParams.get('tag'),
+    ),
+  );
   const [page, setPage] = useState(Number(searchParams.get('page') ?? '1'));
   const [state, setState] = useState<SearchState>(
     initialQuery ? { phase: 'loading' } : { phase: 'idle' },
   );
 
-  async function executeSearch(
-    q: string,
-    opts: { page: number; departmentId: string; documentType: string },
-  ) {
+  type SearchOpts = {
+    page: number;
+    departmentId: string;
+    documentType: string;
+    academicYear: string;
+    course: string;
+    semester: string;
+    tag: string;
+  };
+
+  async function executeSearch(q: string, opts: SearchOpts) {
     const trimmed = q.trim();
     if (!trimmed) {
       setState({ phase: 'idle' });
@@ -79,6 +99,10 @@ function SearchContent() {
     });
     if (opts.departmentId) params.set('department_id', opts.departmentId);
     if (opts.documentType) params.set('document_type', opts.documentType);
+    if (opts.academicYear) params.set('academic_year', opts.academicYear);
+    if (opts.course) params.set('course', opts.course);
+    if (opts.semester) params.set('semester', opts.semester);
+    if (opts.tag) params.set('tag', opts.tag);
 
     try {
       const full = await apiEnvelopeRequest<SearchResponse, SearchMeta>(
@@ -120,6 +144,10 @@ function SearchContent() {
         page,
         departmentId,
         documentType,
+        academicYear,
+        course,
+        semester,
+        tag,
       });
     }
   }, []);
@@ -130,9 +158,13 @@ function SearchContent() {
     if (query.trim()) params.set('q', query.trim());
     if (departmentId) params.set('department_id', departmentId);
     if (documentType) params.set('document_type', documentType);
+    if (academicYear) params.set('academic_year', academicYear);
+    if (course) params.set('course', course);
+    if (semester) params.set('semester', semester);
+    if (tag) params.set('tag', tag);
     if (page !== 1) params.set('page', String(page));
     router.push(`/search?${params.toString()}`);
-    void executeSearch(query, { page, departmentId, documentType });
+    void executeSearch(query, { page, departmentId, documentType, academicYear, course, semester, tag });
   }
 
   function handlePageChange(newPage: number) {
@@ -140,7 +172,25 @@ function SearchContent() {
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', String(newPage));
     router.push(`/search?${params.toString()}`);
-    void executeSearch(query || initialQuery, { page: newPage, departmentId, documentType });
+    void executeSearch(query || initialQuery, {
+      page: newPage,
+      departmentId,
+      documentType,
+      academicYear,
+      course,
+      semester,
+      tag,
+    });
+  }
+
+  function clearFilters() {
+    setDepartmentId('');
+    setDocumentType('');
+    setAcademicYear('');
+    setCourse('');
+    setSemester('');
+    setTag('');
+    setShowAdvanced(false);
   }
 
   return (
@@ -203,7 +253,88 @@ function SearchContent() {
             <option value="REPORT">Report</option>
             <option value="OTHER">Other</option>
           </select>
+
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setShowAdvanced((v) => !v)}
+            aria-expanded={showAdvanced}
+            aria-controls="advanced-filters"
+          >
+            {showAdvanced ? 'Hide filters' : 'More filters'}
+          </button>
+
+          {(departmentId || documentType || academicYear || course || semester || tag) && (
+            <button type="button" className="secondary" onClick={clearFilters}>
+              Clear
+            </button>
+          )}
         </div>
+
+        {showAdvanced && (
+          <div id="advanced-filters" className="card" style={{ margin: 0, padding: '1rem', background: '#f8fafc' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+              <div>
+                <label htmlFor="search-year" className="muted" style={{ fontSize: '0.85rem' }}>
+                  Academic year
+                </label>
+                <input
+                  id="search-year"
+                  type="text"
+                  placeholder="2023-2024"
+                  value={academicYear}
+                  onChange={(e) => setAcademicYear(e.target.value)}
+                  aria-label="Academic year filter"
+                  style={{ width: '100%', marginTop: '0.25rem' }}
+                />
+              </div>
+              <div>
+                <label htmlFor="search-course" className="muted" style={{ fontSize: '0.85rem' }}>
+                  Course
+                </label>
+                <input
+                  id="search-course"
+                  type="text"
+                  placeholder="BTECH"
+                  value={course}
+                  onChange={(e) => setCourse(e.target.value)}
+                  aria-label="Course filter"
+                  style={{ width: '100%', marginTop: '0.25rem' }}
+                />
+              </div>
+              <div>
+                <label htmlFor="search-sem" className="muted" style={{ fontSize: '0.85rem' }}>
+                  Semester
+                </label>
+                <input
+                  id="search-sem"
+                  type="number"
+                  min={1}
+                  max={12}
+                  placeholder="3"
+                  value={semester}
+                  onChange={(e) => setSemester(e.target.value)}
+                  aria-label="Semester filter"
+                  style={{ width: '100%', marginTop: '0.25rem' }}
+                />
+              </div>
+              <div>
+                <label htmlFor="search-tag" className="muted" style={{ fontSize: '0.85rem' }}>
+                  Tag
+                </label>
+                <input
+                  id="search-tag"
+                  type="text"
+                  placeholder="examination"
+                  value={tag}
+                  onChange={(e) => setTag(e.target.value)}
+                  aria-label="Tag filter"
+                  style={{ width: '100%', marginTop: '0.25rem' }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         <button type="submit">Search</button>
       </form>
@@ -232,7 +363,15 @@ function SearchContent() {
           <button
             type="button"
             onClick={() =>
-              void executeSearch(query || initialQuery, { page, departmentId, documentType })
+              void executeSearch(query || initialQuery, {
+                page,
+                departmentId,
+                documentType,
+                academicYear,
+                course,
+                semester,
+                tag,
+              })
             }
           >
             Retry
@@ -260,9 +399,16 @@ function SearchContent() {
             <p className="muted">
               {state.meta.total} results · {state.meta.latency_ms} ms
             </p>
-            {state.facets.departments.length > 0 && (
-              <span className="muted">Facets: {state.facets.departments.length}</span>
-            )}
+            <span className="muted">
+              {state.facets.departments.length > 0 && `Depts: ${state.facets.departments.length}`}
+              {state.facets.departments.length > 0 &&
+                state.facets.document_types &&
+                state.facets.document_types.length > 0 &&
+                ' · '}
+              {state.facets.document_types && state.facets.document_types.length > 0
+                ? `Types: ${state.facets.document_types.map((t) => `${t.type}(${t.count})`).join(', ')}`
+                : ''}
+            </span>
           </div>
 
           <div style={{ display: 'grid', gap: '1rem' }}>

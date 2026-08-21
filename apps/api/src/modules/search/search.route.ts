@@ -16,6 +16,12 @@ const searchQuerySchema = z.object({
   document_type: z
     .enum(['NOTICE', 'CIRCULAR', 'POLICY', 'FORM', 'SCHEDULE', 'REPORT', 'OTHER'])
     .optional(),
+  academic_year: z.string().trim().max(50).optional(),
+  course: z.string().trim().max(200).optional(),
+  semester: z.coerce.number().int().positive().max(12).optional(),
+  tag: z.string().trim().max(100).optional(),
+  published_from: z.string().datetime().optional(),
+  published_to: z.string().datetime().optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
@@ -85,18 +91,28 @@ export async function registerSearchRoutes(
         statuses,
         departmentId: parsed.data.department_id,
         documentType: parsed.data.document_type as unknown as import('@ikp/shared').DocumentType | undefined,
+        academicYear: parsed.data.academic_year,
+        course: parsed.data.course,
+        semester: parsed.data.semester,
+        tag: parsed.data.tag,
+        publishedFrom: parsed.data.published_from ? new Date(parsed.data.published_from) : undefined,
+        publishedTo: parsed.data.published_to ? new Date(parsed.data.published_to) : undefined,
       });
       const latencyMs = Date.now() - start;
 
-      // Facets: simple department counts from results (for MVP, no separate agg query)
+      // Facets: department + document_type counts from results (MVP, no separate agg)
       const deptCounts = new Map<string, { id: string; name: string; count: number }>();
+      const typeCounts = new Map<string, number>();
       for (const r of results) {
         if (r.department_id) {
           const existing = deptCounts.get(r.department_id);
           if (existing) existing.count++;
           else deptCounts.set(r.department_id, { id: r.department_id, name: '', count: 1 });
         }
+        const t = r.document_type;
+        typeCounts.set(t, (typeCounts.get(t) ?? 0) + 1);
       }
+      const typeFacets = Array.from(typeCounts.entries()).map(([type, count]) => ({ type, count }));
 
       return reply.status(200).send({
         data: {
@@ -114,6 +130,7 @@ export async function registerSearchRoutes(
           })),
           facets: {
             departments: Array.from(deptCounts.values()),
+            document_types: typeFacets,
           },
         },
         meta: {
