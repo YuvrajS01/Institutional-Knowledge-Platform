@@ -10,6 +10,7 @@ export * from './llm-date-extractor.js';
 export * from './llm-metadata-extractor.js';
 export * from './local-embedding-provider.js';
 export * from './local-llm-provider.js';
+export * from './cloud-llm-provider.js';
 export * from './local-reranker-provider.js';
 export * from './metadata.js';
 export * from './metadata-factory.js';
