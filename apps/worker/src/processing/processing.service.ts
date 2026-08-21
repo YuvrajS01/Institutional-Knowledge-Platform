@@ -1,8 +1,10 @@
 import type { JobData } from '@ikp/queue';
 import {
   createChunker,
+  createDateExtractor,
   createEmbeddingProvider,
   type Chunker,
+  type DateExtractor,
   type EmbeddingProvider,
   isTextAdequate,
   OCR_IMAGE_MIME_TYPES,
@@ -33,6 +35,7 @@ export class ProcessingService {
   private readonly chunksRepository: DocumentChunksRepository;
   private readonly chunker: Chunker;
   private readonly embeddingProvider: EmbeddingProvider;
+  private readonly dateExtractor: DateExtractor;
 
   constructor(
     private readonly pool: WorkerDbPool,
@@ -43,12 +46,14 @@ export class ProcessingService {
       embeddingProvider?: EmbeddingProvider;
       chunker?: Chunker;
       chunksRepository?: DocumentChunksRepository;
+      dateExtractor?: DateExtractor;
     },
   ) {
     this.repository = new ProcessingRepository(pool);
     this.chunksRepository = options?.chunksRepository ?? new DocumentChunksRepository(pool);
     this.chunker = options?.chunker ?? createChunker();
     this.embeddingProvider = options?.embeddingProvider ?? createEmbeddingProvider();
+    this.dateExtractor = options?.dateExtractor ?? createDateExtractor();
   }
 
   async processJob(data: JobData): Promise<void> {
@@ -155,6 +160,40 @@ export class ProcessingService {
     } else {
       // No text or no chunks -> ensure no stale chunks remain.
       await this.chunksRepository.deleteByVersion(versionId);
+    }
+
+    // Extract important dates (heuristic or LLM) and persist to document_metadata.extracted_dates
+    // Best-effort: never fail the pipeline for date extraction
+    let extractedDates: unknown[] = [];
+    if (trimmed.length > 0) {
+      try {
+        const filename = target.storage_key.split('/').pop() ?? null;
+        const dateResult = await this.dateExtractor.extract({
+          text,
+          filename,
+          mimeType: target.mime_type,
+        });
+        extractedDates = dateResult.dates.map((d) => ({
+          raw: d.raw,
+          isoDate: d.isoDate,
+          iso_date: d.isoDate,
+          label: d.label,
+          type: d.type,
+          context: d.context,
+          confidence: d.confidence,
+        }));
+      } catch {
+        // ignore date extraction failures
+        extractedDates = [];
+      }
+    }
+    try {
+      await this.pool.query(
+        `UPDATE document_metadata SET extracted_dates = $2::jsonb, updated_at = now() WHERE document_id = $1`,
+        [documentId, JSON.stringify(extractedDates)],
+      );
+    } catch {
+      // ignore metadata update failures (row may not exist yet for some test seeds)
     }
 
     await this.repository.updateProcessingResult(institutionId, versionId, {

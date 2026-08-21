@@ -120,6 +120,7 @@ export interface DocumentDetailView {
     semester: number | null;
     audience: Record<string, unknown>;
     tags: string[];
+    extracted_dates: unknown[];
   };
 }
 
@@ -532,6 +533,7 @@ export class DocumentsService {
         semester: metadata?.semester ?? null,
         audience: metadata?.audience ?? {},
         tags: (metadata?.tags as string[]) ?? [],
+        extracted_dates: (metadata?.extracted_dates as unknown[]) ?? [],
       },
     };
   }

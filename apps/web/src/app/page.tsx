@@ -31,7 +31,7 @@ export default function HomePage() {
       </p>
       <p>
         <a href="/login">Sign in</a> · <a href="/admin">Admin</a> · <a href="/search">Search</a> ·{' '}
-        <a href="/ask">Ask Institution</a>
+        <a href="/ask">Ask Institution</a> · <a href="/dates">Important dates</a>
       </p>
     </main>
   );
