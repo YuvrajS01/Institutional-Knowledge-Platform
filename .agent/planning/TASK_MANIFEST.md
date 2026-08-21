@@ -112,7 +112,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P6-004 | P1 | DONE | Add important dates API/UI | P3-007 |
 | P6-005 | P1 | DONE | Add bookmarks | P6-001 |
 | P6-006 | P1 | DONE | Add related documents | P5-008,P6-001 |
-| P6-007 | P1 | TODO | Add share links | P6-001 |
+| P6-007 | P1 | DONE | Add share links | P6-001 |
 
 ## Phase 7 — Notifications
 
