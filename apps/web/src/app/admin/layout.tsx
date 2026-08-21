@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/documents', label: 'Documents' },
   { href: '/admin/documents/upload', label: 'Upload' },
+  { href: '/admin/documents/review-queue', label: 'Review queue' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
