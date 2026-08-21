@@ -80,7 +80,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P4-002 | P0 | DONE | Implement approve/publish APIs | P4-001 |
 | P4-003 | P0 | DONE | Implement supersession/version APIs | P2-001,P2-005 |
 | P4-004 | P1 | DONE | Build approval queue UI | P4-001 |
-| P4-005 | P1 | TODO | Build version history UI | P4-003 |
+| P4-005 | P1 | DONE | Build version history UI | P4-003 |
 | P4-006 | P0 | DONE | Add publication permission tests | P4-002,P1-007 |
 
 ## Phase 5 — Search
