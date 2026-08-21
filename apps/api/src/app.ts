@@ -20,6 +20,7 @@ import { registerSearchRoutes } from './modules/search/search.route.js';
 import { registerAiRoutes } from './modules/ai/ai.route.js';
 import { registerBookmarksRoutes } from './modules/bookmarks/bookmarks.route.js';
 import { registerDatesRoutes } from './modules/dates/dates.route.js';
+import { registerNotificationsRoutes } from './modules/notifications/notifications.route.js';
 import { registerRelatedDocumentsRoutes } from './modules/documents/related-documents.route.js';
 import { registerShareLinksRoutes } from './modules/documents/share-links.route.js';
 import { registerUnresolvedSearchesRoutes } from './modules/search/unresolved-searches.route.js';
@@ -93,6 +94,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
         await registerRelatedDocumentsRoutes(v1, { pool: options.pool!, authorization });
         await registerShareLinksRoutes(v1, { pool: options.pool!, authorization });
         await registerDatesRoutes(v1, { pool: options.pool!, authorization });
+        await registerNotificationsRoutes(v1, { pool: options.pool!, authorization });
         await registerAnalyticsRoutes(v1, { pool: options.pool!, authorization });
         await registerAuditRoutes(v1, { pool: options.pool!, authorization });
       },
