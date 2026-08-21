@@ -1,4 +1,5 @@
 import type { DbPool } from '../../infrastructure/db/db-pool.js';
+import { createEmailAdapter, type EmailAdapter } from './email-adapter.js';
 import { NotificationsRepository } from './notifications.repository.js';
 
 export interface CreateNotificationInput {
@@ -13,9 +14,11 @@ export interface CreateNotificationInput {
 
 export class NotificationsService {
   private readonly repo: NotificationsRepository;
+  private readonly email: EmailAdapter;
 
-  constructor(pool: DbPool) {
+  constructor(pool: DbPool, options: { emailAdapter?: EmailAdapter } = {}) {
     this.repo = new NotificationsRepository(pool);
+    this.email = options.emailAdapter ?? createEmailAdapter();
   }
 
   async notify(input: CreateNotificationInput) {
@@ -31,6 +34,28 @@ export class NotificationsService {
       entityType: input.entityType,
       entityId: input.entityId,
     });
+  }
+
+  async notifyWithEmail(
+    input: CreateNotificationInput & { toEmail: string },
+  ): Promise<{
+    notification: Awaited<ReturnType<NotificationsRepository['create']>>;
+    email: { messageId: string } | null;
+  }> {
+    const notification = await this.notify(input);
+    let emailResult: { messageId: string } | null = null;
+    try {
+      emailResult = await this.email.send({
+        to: input.toEmail,
+        subject: input.title,
+        text: input.body,
+        html: `<p>${input.body}</p>`,
+      });
+    } catch {
+      // Email failure should not block notification creation
+      emailResult = null;
+    }
+    return { notification, email: emailResult };
   }
 
   async list(
