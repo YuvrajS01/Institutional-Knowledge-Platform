@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import type { GenerateRequest, GenerateResponse, LLMProvider, LLMProviderOptions } from './llm.js';
 import { LocalLLMProvider, type LocalLLMProviderOptions } from './local-llm-provider.js';
+import { CloudLLMProvider } from './cloud-llm-provider.js';
 
 /**
  * Deterministic mock LLM provider for tests and local development (P8-001).
@@ -114,7 +115,7 @@ export function createLLMProvider(options?: LLMFactoryOptions): LLMProvider {
   const isMock = provider === 'mock' || provider === 'test';
 
   if (isMock) {
-    return createMockLLMProvider(options);
+    return createMockLLMProvider(options ?? {});
   }
 
   const isLocal =
@@ -136,5 +137,17 @@ export function createLLMProvider(options?: LLMFactoryOptions): LLMProvider {
     });
   }
 
-  throw new Error(`LLM provider "${provider}" not yet implemented. Use "mock" or "local".`);
+  const isCloud =
+    provider === 'cloud' ||
+    provider === 'openai' ||
+    provider === 'anthropic' ||
+    provider === 'gemini' ||
+    provider === 'cloud-openai' ||
+    provider === 'cloud-anthropic';
+
+  if (isCloud) {
+    return new CloudLLMProvider(options as unknown as import('./cloud-llm-provider.js').CloudLLMProviderOptions);
+  }
+
+  throw new Error(`LLM provider "${provider}" not yet implemented. Use "mock", "local", or "cloud".`);
 }
