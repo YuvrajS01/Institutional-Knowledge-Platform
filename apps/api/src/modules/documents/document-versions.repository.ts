@@ -12,6 +12,7 @@ export interface DocumentVersionRow {
   extracted_text: string | null;
   ocr_status: string | null;
   page_count: number | null;
+  processing_status: string;
   created_by: string;
   created_at: Date;
 }
@@ -38,6 +39,7 @@ function mapVersionRow(row: Record<string, unknown>): DocumentVersionRow {
     extracted_text: (row.extracted_text as string | null) ?? null,
     ocr_status: (row.ocr_status as string | null) ?? null,
     page_count: (row.page_count as number | null) ?? null,
+    processing_status: (row.processing_status as string | null) ?? 'QUEUED',
     created_by: row.created_by as string,
     created_at: row.created_at as Date,
   };
@@ -54,6 +56,7 @@ const SELECT_COLUMNS = [
   'extracted_text',
   'ocr_status',
   'page_count',
+  'processing_status',
   'created_by',
   'created_at',
 ].join(', ');
@@ -69,6 +72,7 @@ const SELECT_COLUMNS_PREFIXED = [
   'v.extracted_text',
   'v.ocr_status',
   'v.page_count',
+  'v.processing_status',
   'v.created_by',
   'v.created_at',
 ].join(', ');

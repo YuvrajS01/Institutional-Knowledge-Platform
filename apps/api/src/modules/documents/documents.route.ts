@@ -421,4 +421,42 @@ export async function registerDocumentsRoutes(
       return reply.status(200).send({ data });
     },
   );
+
+  app.get(
+    '/documents/:document_id/processing-status',
+    {
+      preHandler: options.authorization.requireMember,
+      config: { rateLimit: READ_RATE_LIMIT },
+    },
+    async (request, reply) => {
+      const parsed = documentParamsSchema.safeParse(request.params);
+      if (!parsed.success) {
+        throw new AppError('VALIDATION_ERROR', 'One or more fields are invalid.', 422, {});
+      }
+      const data = await service.getProcessingStatus(actorFor(request), parsed.data.document_id);
+      if (!data) {
+        throw AppError.notFound('Document not found.');
+      }
+      return reply.status(200).send({ data });
+    },
+  );
+
+  app.post(
+    '/documents/:document_id/retry-processing',
+    {
+      preHandler: options.authorization.requireMember,
+      config: { rateLimit: WRITE_RATE_LIMIT },
+    },
+    async (request, reply) => {
+      const parsed = documentParamsSchema.safeParse(request.params);
+      if (!parsed.success) {
+        throw new AppError('VALIDATION_ERROR', 'One or more fields are invalid.', 422, {});
+      }
+      const data = await service.retryProcessing(actorFor(request), parsed.data.document_id);
+      if (!data) {
+        throw AppError.notFound('Document not found.');
+      }
+      return reply.status(202).send({ data });
+    },
+  );
 }
