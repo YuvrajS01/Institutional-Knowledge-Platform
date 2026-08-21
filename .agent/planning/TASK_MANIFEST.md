@@ -66,7 +66,7 @@ The agent should execute the highest-priority unblocked task in dependency order
 | P3-003 | P0 | DONE | Implement OCR adapter | P3-001 |
 | P3-004 | P0 | DONE | Implement processing orchestration | P3-002,P3-003 |
 | P3-005 | P0 | DONE | Implement metadata extraction interface | P3-004 |
-| P3-006 | P1 | TODO | Implement metadata extraction provider | P3-005 |
+| P3-006 | P1 | DONE | Implement metadata extraction provider | P3-005 |
 | P3-007 | P1 | TODO | Implement date extraction | P3-006 |
 | P3-008 | P0 | DONE | Implement chunking | P3-004 |
 | P3-009 | P1 | TODO | Add processing retry/status UI | P3-004,P2-008 |

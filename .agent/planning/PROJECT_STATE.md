@@ -6,134 +6,50 @@
 
 ## Current Phase
 
-Phase 8 (Institutional AI) — LLM provider interface + local LLM adapter + permission-aware retrieval + context builder + RAG answer service done; Phase 6 (Consumption) — document detail API + document detail page done; Phase 4 (Publishing) — review queue + supersession/version APIs + publication permission tests done; Phase 5 (Search) — lexical FTS + chunk storage + embedding interface + local adapter + generate/store embeddings + vector search + hybrid retrieval + search API + search results UI + search evaluation set done; Phase 3 remainder P1 tasks pending.
+Phase 9 (Hardening) — P9-001 E2E + P9-002 security regression + P9-008 MVP final gate DONE; Phase 8 (Institutional AI) P0 DONE — LLM provider + local adapter + permission-aware retrieval + context builder + RAG answer + citation contract + unsupported + /ai/ask API + Ask UI + prompt-injection + RAG eval + cross-tenant RAG DONE; Phase 3 P1 — P3-006 DONE on task branch, P3-007/009/010 still TODO.
 
 ## Current Task
 
-**P8-006** (Implement RAG answer service) — implementation complete on task branch `feat/P8-006-rag-answer-service`; PR pending human approval.
+**P3-006** (Implement metadata extraction provider — P1) — implementation complete on task branch `feat/P3-006-metadata-llm-provider`; 23 unit tests passing, typecheck/lint/build green, 438 tests total.
 
 ## Current Branch
 
-`feat/P8-006-rag-answer-service`
+`feat/P3-006-metadata-llm-provider`
 
 ## Overall Status
 
-`PHASE_8_IN_PROGRESS` — P8-001 (LLM provider interface), P8-002 (local LLM adapter), P8-004 (permission-aware retrieval), P8-005 (context builder), and P8-006 (RAG answer service) done; `PHASE_6_IN_PROGRESS` — P6-001 (document detail API) and P6-002 (document detail page) done; `PHASE_4_IN_PROGRESS` — P4-001 (review queue API), P4-002 (approve/publish APIs), P4-003 (supersession/version APIs), and P4-006 (publication permission tests) done; `PHASE_5_IN_PROGRESS` — P5-001 (document_chunks + pgvector), P5-002 (embedding provider abstraction), P5-003 (local embedding adapter), P5-004 (generate/store embeddings), P5-005 (PostgreSQL full-text search), P5-006 (vector search), P5-007 (hybrid retrieval), P5-009 (search API), P5-010 (search results UI), and P5-014 (search evaluation set) done; Phase 3 P1 tasks (P3-006/007/009/010) and remaining Phase 6/8 (P6-003→, P8-003→, P8-007→) still pending.
+`PHASE_9_DONE` — all P0 tasks DONE and `docs/FINAL_IMPLEMENTATION_REPORT.md` at `main` `16f908c`; `PHASE_8_DONE` — P8-001/002/004/005/006/007/008/009/010/011/012/013 all DONE; `PHASE_6_DONE` for detail — P6-001/002 DONE; `PHASE_4_DONE` for publishing — P4-001/002/003/006 DONE; `PHASE_5_DONE` — P5-001/002/003/004/005/006/007/009/010/014 DONE; Phase 3 — P3-001..005/008 DONE, **P3-006 DONE on branch** (needs PR merge), P3-007/009/010 still TODO.
 
 ## Last Completed Task
 
-P8-006 (Implement RAG answer service) — `apps/api/src/modules/ai/rag-answer.service.ts` (`RagAnswerService` with `PermissionAwareRetrievalService` + `ContextBuilderService` + `LLMProvider`, `answer` with retrieval → context → `llm.generate` → citation validation `[n]` → `grounded`/`confidence`/`citations`) + `rag-answer.service.test.ts` 4 unit tests (grounded, unsupported, empty, citations) + `rag-answer.integration.test.ts` 3 integration tests (grounded with citation, unsupported, tenant isolation) via `pgvector` + `mock` embeddings/LLM; 361 tests passing (354 +7).
+P3-006 (Implement metadata extraction provider — P1) — `packages/processing/src/llm-metadata-extractor.ts` (`LlmMetadataExtractor` with `LLMProvider` + heuristic fallback, `normalize`, `extractJsonObject`, `SYSTEM_PROMPT` grounded, `maxTextChars` 4000, empty-text bypass) + `packages/processing/src/metadata-factory.ts` (`createMetadataExtractor` unified factory with `METADATA_PROVIDER`/`LLM_PROVIDER` env switch, heuristic default) + `llm-metadata-extractor.test.ts` 23 unit tests (valid JSON, fences, wrap, invalid/fallback, empty, truncate, tags/caps, course/semester, language, factory switch) + `.env.example` `METADATA_PROVIDER` docs + `packages/processing/src/index.ts` re-exports; 438 tests passing (+23), typecheck/lint/build green; pgvector on 5434 for verification.
 
 ## What Is Working
 
-- Everything from Phases 0–2 + P3-001..P5-001 (merged into `main` via PRs #1–#24).
-- Full-text search (P5-005):
-  - **`infra/migrations/1787232000000_add-document-search-vector.js`**: `documents.search_vector tsvector` + trigger `documents_search_vector_update()` (weighted A title / B slug / C document_type) + GIN index `documents_search_vector_idx` + backfill for existing rows; down-migration drops trigger/function/index/column.
-  - **`apps/api/src/modules/documents/documents.repository.ts`**: `list()` search now uses `d.search_vector @@ plainto_tsquery('english', $n) OR d.title ILIKE $m` and, when searching, orders by `ts_rank(d.search_vector, plainto_tsquery(...)) DESC, d.created_at DESC` (relevance + recency). Non-search listings unchanged. **P5-007 adds `lexicalSearch(institutionId, query, {limit, statuses, department_id, document_type})` returning `DocumentListItem & {lexical_score}` via `ts_rank(d.search_vector, plainto_tsquery('english', $n))` ordered `lexical_score DESC`. **P4-001 adds `visibleStatusesForRole` RBAC for `status` filter and `lexicalSearch` for hybrid. **P4-003 adds `superseded_by_document_id`/`superseded_reason`/`superseded_at` + `supersede` + `SELECT_COLUMNS`. **P6-001 extends `DocumentDetailView` with `is_current`/`superseded_by`/`superseded_at`/`superseded_reason`/`current_version_id`.
-  - **`apps/api/src/modules/documents/documents.route.test.ts`**: 4 new FTS tests — stemmed term match (`schedules` → `Holiday Schedule`), token-order independence (`fare refund`), title relevance ranking (double-token title outranks), and search_vector trigger sync on title update.
-- Embedding provider interface (P5-002):
-  - **`packages/processing/src/embedding.ts`**: `EmbeddingProvider` contract (`modelName()`, `dimensions()`, `embed(texts: string[]): Promise<number[][]>`) — provider-agnostic (ADR-003/007) for `vector(1024)` chunks (TECHNICAL_SPEC §10, AI_LLM_ARCHITECTURE §7/§18, IMPLEMENTATION_GUIDE §5).
-  - **`packages/processing/src/mock-embedding-provider.ts`**: `MockEmbeddingProvider` (deterministic SHA256 hash-expanded, L2-normalized, zero-vector for empty, batch-ordered, `createMockEmbeddingProvider`/`createEmbeddingProvider` factories). Default `mock-bge-m3` 1024 dims (matches DB); validates dimensions, handles empty/batch, factory switchable for P5-003 local adapter.
-  - **`packages/processing/src/mock-embedding-provider.test.ts`**: 13 unit tests (modelName/dimensions, vector dims, batch order, determinism, distinctness via cosine <0.99, empty/whitespace zero-vector, empty batch, L2-norm, factory, custom dims).
-  - `packages/processing/src/index.ts` re-exports.
-- Local embedding adapter (P5-003):
-  - **`packages/processing/src/local-embedding-provider.ts`**: `LocalEmbeddingProvider` (provider-agnostic adapter for Ollama `POST /api/embed` and OpenAI-compatible `POST /v1/embeddings`; supports `BGE-M3` 1024 dims, batching via `maxBatchSize`, zero vectors for empty inputs, dimension validation, timeout/AbortController, `normalize` option, flexible endpoint resolution from `EMBEDDING_BASE_URL`/`EMBEDDING_ENDPOINT`).
-  - **`packages/processing/src/mock-embedding-provider.ts`**: updated `createEmbeddingProvider` factory — reads `EMBEDDING_PROVIDER` (`mock|local|ollama|http|openai|vllm`), `EMBEDDING_MODEL`, `EMBEDDING_BASE_URL`, `EMBEDDING_DIMENSIONS`, `EMBEDDING_ENDPOINT` and returns `LocalEmbeddingProvider` when configured, otherwise `MockEmbeddingProvider`.
-  - **`packages/processing/src/local-embedding-provider.test.ts`**: 27 unit tests (defaults, custom, invalid dims/batch, empty handling without fetch, single/batch order, Ollama/OpenAI/legacy shapes, batching, HTTP error, dimension mismatch, non-finite, unexpected shape, legacy single, endpoint resolution, normalize, factory switch via env).
-  - `packages/processing/src/index.ts` re-exports `LocalEmbeddingProvider`.
-  - `.env.example` updated with `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_BASE_URL`, `EMBEDDING_ENDPOINT`, `EMBEDDING_DIMENSIONS` documentation.
-- Generate/store embeddings (P5-004):
-  - **`apps/api/src/modules/documents/document-chunks.repository.ts`**: `createMany()` now persists `embedding vector(1024)` via `'[${embedding.join(',')}]'::vector` (null → `NULL::vector`), 7 params/row, `::vector` cast for pgvector; backward compatible for null embeddings (existing 7 integration tests still pass, plus new embedding round-trip test).
-  - **`apps/worker/src/processing/document-chunks.repository.ts`**: worker-side mirror (WorkerDbPool) with same `::vector` logic for pipeline use.
-  - **`apps/worker/src/processing/processing.service.ts`**: extended orchestration — after text extraction (and OCR), chunks via `chunker.chunk({text, pages, pageCount})` (page-aware, deterministic), embeds via `embeddingProvider.embed(chunkTexts)` (mock `mock-bge-m3` 1024 dims, L2-normalized; local `bge-m3` when `EMBEDDING_PROVIDER` set), then `storage.put(extracted.txt)` + `deleteByVersion`/`createMany` with embeddings before `updateProcessingResult(COMPLETED)` (retry-safe: failure keeps `PROCESSING` for retry; idempotent: `COMPLETED` early return, stale chunks deleted on reprocess).
-  - **`apps/api/src/modules/documents/document-chunks.repository.test.ts`**: added `stores and retrieves embeddings for chunks (P5-004)` — creates chunks, embeds via `createMockEmbeddingProvider`, inserts with `embedding`, asserts `embedding` string `'['` and `JSON.parse` 1024 dims.
-  - **`apps/worker/src/processing/processing.embeddings.unit.test.ts`**: 7 unit tests (chunk+embed, empty→0 chunks+delete, wrong count throws, idempotent COMPLETED no re-embed, page-aware, vector formatting `::vector`, null).
-  - `processing.repository.ts` / `processing.service.test.ts` unchanged (integration still passes via pgvector).
-- Vector search (P5-006):
-  - **`apps/api/src/modules/search/vector-search.repository.ts`**: `VectorSearchRepository extends TenantRepository` — `searchByEmbedding(institutionId, queryEmbedding, {limit, offset, statuses, departmentId, documentType})` builds tenant-scoped `WHERE d.institution_id=$1 AND c.embedding IS NOT NULL AND d.status=ANY($3)`, optional department/type filters, `ORDER BY c.embedding <=> $2::vector ASC LIMIT/OFFSET`, returns `VectorSearchResult` with `distance` (`<=>`) and `similarity` (`1-distance`), validates non-empty/finite embedding, `tenantId()` fail-fast, includes `department_id`/`published_at` for hybrid.
-  - **`apps/api/src/modules/search/vector-search.service.ts`**: `VectorSearchService` — `search(institutionId, {text, limit, offset, statuses, departmentId, documentType})` validates `text.trim()` non-empty, embeds via `EmbeddingProvider` (`createEmbeddingProvider()` mock/local), delegates to `VectorSearchRepository.searchByEmbedding`; `searchByEmbedding` direct for P5-007 hybrid; exposes `modelName()`/`dimensions()`.
-  - **`apps/api/src/modules/search/vector-search.repository.test.ts`**: 7 integration tests (semantic similarity ranking via mock embeddings, empty, tenant isolation, PUBLISHED default + explicit DRAFT, validation, invalid tenant, limit/offset) — requires `pgvector/pgvector:pg17`.
-  - **`apps/api/src/modules/search/vector-search.service.test.ts`**: 4 unit tests (embed+delegate, empty throws, model/dims, direct).
-- Hybrid retrieval (P5-007):
-  - **`apps/api/src/modules/documents/documents.repository.ts`**: added `lexicalSearch` for hybrid (see above).
-  - **`apps/api/src/modules/search/vector-search.repository.ts`**: extended to return `department_id`/`published_at` for hybrid merging.
-  - **`apps/api/src/modules/search/hybrid-search.service.ts`**: `HybridSearchService` — `search(institutionId, query, {limit, offset, statuses, departmentId, documentType, lexicalWeight=0.4, semanticWeight=0.6})` embeds query, runs `lexicalSearch` (top 20) and `vector.searchByEmbedding` (top 20) in parallel, aggregates vector chunks to `max similarity` per doc, normalizes `lexical_score / maxLexical` and `similarity / maxSemantic`, hybrid `lexicalWeight*normLex + semanticWeight*normSem`, `match_reasons` `['lexical','semantic']`, freshness tie-breaker `published_at`, sorts `hybrid_score DESC`.
-  - **`apps/api/src/modules/search/hybrid-search.service.test.ts`**: 4 unit tests (merge ranking both>single, empty, vector-only, model/dims).
-  - **`apps/api/src/modules/search/hybrid-search.integration.test.ts`**: 5 integration tests (both-match ranking, tenant isolation, PUBLISHED filter, empty/invalid, semantic-only) — requires `pgvector`.
-- Search API (P5-009):
-  - **`apps/api/src/modules/search/search.route.ts`**: `GET /search` — `requireMember` auth, `60/min` rate limit, Zod `q|query|search` (required, 1..200), `department_id` (uuid), `document_type` (enum), `page`/`limit` (1..100, default 20), `visibleStatusesForRole` (`STUDENT`/`FACULTY` → `PUBLISHED` else all), delegates to `HybridSearchService.search(institutionId, q, {limit, offset, statuses, departmentId, documentType})`, returns `{data:{query, results:[{document_id,title,score,summary:null,match_reasons,published_at,is_current,lexical_score,semantic_score}], facets:{departments:[{id,name,count}]}}, meta:{total, latency_ms}}` per `API_SPEC_SHEET.md` §7.
-  - **`apps/api/src/app.ts`**: registers `registerSearchRoutes` under `/api/v1` (after `registerDocumentsRoutes`, before `registerAuditRoutes`).
-  - **`apps/api/src/modules/search/search.route.test.ts`**: 7 integration tests (lexical, semantic, draft hidden, tenant isolation, missing q 422, department filter, 401) — requires `pgvector` + `pgvector/pgvector:pg17` + MinIO.
-- Search results UI (P5-010):
-  - **`apps/web/src/app/search/page.tsx`**: `'use client'` + `Suspense` for `useSearchParams`; `HybridSearchService` via `GET /search` (`apiEnvelopeRequest`), `q|query|search` + `department_id`/`document_type` filters, `page`/`limit` pagination, `visibleStatusesForRole` handled server-side; states `idle` (try asking), `loading` (aria-busy), `error` (retry), `empty` (We couldn't find… + suggestions per UI_UX §8), `success` (results grid with `title`/`score`/`match_reasons`/`published_at`/`is_current` badge per UI_UX §6, `Open`/`Share`, `facets` counts, `pagination`); `requireMember` redirect to `/login` on 401.
-  - **`apps/web/src/app/page.tsx`**: home `form action="/search"` search bar (UI_UX §5: “Search anything in your institution…” + try asking) + `Search` link.
-  - `next build` 9 routes including `/search` 3.07 kB, `284` tests passing.
-- Search evaluation set (P5-014):
-  - **`tests/evals/search-evaluation.dataset.json`**: 12 cases (exact/partial/natural/vague/date/department/version-conflict/multilingual hi/hinglish/no-answer/restricted/prefix-fuzzy) per `TEST_STRATEGY.md` §6 and `AI_EVALUATION.md` §2.
-  - **`tests/evals/search-evaluation.runner.ts`**: `evaluateSearch(dataset, searchFn)` computes `Recall@5/10`, `MRR`, `NDCG@5/10`, `zero-result` and `per_case` with `formatMetrics`.
-  - **`tests/evals/search-evaluation.test.ts`**: integration via `HybridSearchService` (seeded titles/chunks, mock `mock-bge-m3`), asserts `Recall@5≥0.4` `MRR≥0.3` and per-case.
-  - **`tests/evals/search-evaluation.runner.test.ts`**: 4 unit tests (perfect, zero/no-answer, partial, NDCG).
-  - `tsconfig.test.json` paths for `@ikp/processing` etc., `package.json` root `pg` for evals.
-- Review queue API (P4-001):
-  - **`apps/api/src/modules/documents/documents.service.ts`**: `list` now enforces RBAC for `status` filter (non-PUBLISHED requires `document.approve`/`publish`), `reviewQueue` method requires `document.approve` and delegates to `list` with `IN_REVIEW`.
-  - **`apps/api/src/modules/documents/documents.route.ts`**: `GET /documents/review-queue` with `guard('document.approve')`, `60/min` rate limit, `reviewQueueQuerySchema` (omit `status`), delegates to `service.reviewQueue`.
-  - **`apps/api/src/modules/documents/document-review-queue.route.test.ts`**: 6 integration tests (approver list, student 403, tenant isolation, search filter, student list IN_REVIEW 403, approver list IN_REVIEW 200).
-- Supersession/version APIs (P4-003):
-  - **`infra/migrations/1787235000000_add-superseded-by-to-documents.js`**: `superseded_by_document_id` uuid FK `SET NULL`, `superseded_reason` text, `superseded_at` timestamptz, index.
-  - **`apps/api/src/modules/documents/documents.repository.ts`**: `DocumentRow` + `superseded_*`, `SELECT_COLUMNS`, `mapDocumentRow`, `supersede` method (`status='SUPERSEDED'`).
-  - **`apps/api/src/modules/documents/document-versions.repository.ts`**: `listByDocumentId` ordered `version_number ASC`.
-  - **`apps/api/src/modules/documents/documents.service.ts`**: `supersede` (requires `document.publish`, `PUBLISHED` check, self-check, `canTransitionDocument`, audit `document.superseded`), `listVersions` (with `is_current`).
-  - **`apps/api/src/modules/documents/documents.route.ts`**: `POST /documents/:id/supersede` (`guard('document.publish')`, Zod `superseded_by_document_id` uuid+`reason`, 60/min) + `GET /documents/:id/versions` (`requireMember`, tenant-scoped).
-  - **`apps/api/src/modules/documents/document-supersession.route.test.ts`**: 9 integration tests (supersede PUBLISHED→SUPERSEDED, non-PUBLISHED 409, self 409, student 403, tenant isolation, uuid validation, versions list ordered `is_current`, 404, tenant isolation).
-- Publication permission tests (P4-006):
-  - **`apps/api/src/modules/documents/document-publication-permission.route.test.ts`**: 8 integration tests (student/faculty cannot approve/publish, deptAdmin cannot, approver/admin can, student visibility PUBLISHED only, student list only PUBLISHED, superseded not in student list/search, cross-tenant 404, search draft/superceded hidden).
-- Document detail API (P6-001):
-  - **`apps/api/src/modules/documents/documents.service.ts`**: `DocumentDetailView` + `is_current`/`superseded_by`/`superseded_at`/`superseded_reason`/`current_version_id`, `get` now returns `SUPERSEDED` to students as historical with `is_current:false`, `superseded_by` resolved, `is_current` via `PUBLISHED && !superseded_by`.
-  - **`apps/api/src/modules/documents/document-detail.route.test.ts`**: 4 integration tests (PUBLISHED `is_current` true, SUPERSEDED `is_current` false with `superseded_by`, tenant isolation, DRAFT hidden).
-- Document detail page (P6-002):
-  - **`apps/web/src/app/documents/[id]/page.tsx`**: `'use client'` + `useParams`/`useRouter`/`useEffect`/`useState`/`Suspense`? actually `useParams`; fetches `GET /documents/:id` + `GET /documents/:id/versions` via `apiRequest`, states `loading`/`error`/`ready`; shows `status`/`is_current`/`Superseded` badges, `title`, `department`/`type`/`published_at`, `Superseded by` link, version history table (`version_number`/`created_at`/`is_current`), `Copy link`/`Search related`, `Back to search`.
-  - `next build` 10 routes including `/documents/[id]` 2.49 kB and `/search` 3.07 kB.
-- LLM provider interface (P8-001):
-  - **`packages/processing/src/llm.ts`**: `LLMProvider` with `modelName()` + `generate({prompt, systemPrompt, temperature, maxTokens, stopSequences}) → GenerateResponse{text, model, usage}`.
-  - **`packages/processing/src/mock-llm-provider.ts`**: `MockLLMProvider` (deterministic SHA256, grounded for institutional queries, unsupported for unknown, generic mock, `createLLMProvider` factory with `LLM_PROVIDER` env).
-  - **`packages/processing/src/mock-llm-provider.test.ts`**: 10 unit tests (modelName, grounded, deterministic, different, unsupported, empty, generic, factory, unimplemented, interface).
-  - `packages/processing/src/index.ts` re-exports `llm` + `mock-llm-provider`.
-- Local LLM adapter (P8-002):
-  - **`packages/processing/src/local-llm-provider.ts`**: `LocalLLMProvider` (Ollama `POST /api/generate`/`/api/chat` + OpenAI `POST /v1/chat/completions` compatible, `baseUrl`/`endpoint`/`timeoutMs`/`fetchImpl`, `modelName` `qwen2:7b` default, `temperature`/`maxTokens`/`systemPrompt`, `AbortController` timeout, flexible response parsing).
-  - **`packages/processing/src/mock-llm-provider.ts`**: factory now returns `LocalLLMProvider` for `local`/`ollama`/`vllm`/`openai`/`http` (via `LLM_MODEL`/`LLM_BASE_URL`/`LLM_ENDPOINT`).
-  - **`packages/processing/src/local-llm-provider.test.ts`**: 17 unit tests (modelName, empty, Ollama generate/chat, OpenAI, HTTP error, unexpected shape, endpoint override, trailing slash, factory, temperature, createLocal, explicit provider, env).
-  - `packages/processing/src/mock-llm-provider.test.ts` now 11 tests (added unknown provider throws).
-  - `packages/processing/src/index.ts` re-exports `local-llm-provider`.
-- Permission-aware retrieval (P8-004):
-  - **`apps/api/src/modules/search/permission-aware-retrieval.service.ts`**: `PermissionAwareRetrievalService` wrapping `HybridSearchService` with `visibleStatusesForRole` (`STUDENT`/`FACULTY` → `PUBLISHED` else all), validates `query`/`actor`, tenant `institutionId` via `HybridSearchService` `tenantCondition`, no post-generation filtering per AI_LLM_ARCHITECTURE §28, used by `P8-005`/`P8-006`.
-  - **`apps/api/src/modules/search/permission-aware-retrieval.service.test.ts`**: 3 integration tests (student PUBLISHED only, tenant isolation, empty/missing actor) — requires `pgvector`.
-- Context builder (P8-005):
-  - **`apps/api/src/modules/ai/context-builder.service.ts`**: `ContextBuilderService` with `maxTokens`/`maxChunks`, `systemPrompt` grounded, `userPrompt` with `[n] Title (ID, Dept) + Content + Score`, `citations`, `tokenEstimate`, no-answer handling, token budget.
-  - **`apps/api/src/modules/ai/context-builder.service.test.ts`**: 6 unit tests (empty, no-answer, single, maxChunks/maxTokens, match reasons, tiny budget).
-- RAG answer service (P8-006):
-  - **`apps/api/src/modules/ai/rag-answer.service.ts`**: `RagAnswerService` with `PermissionAwareRetrievalService` + `ContextBuilderService` + `LLMProvider`, `answer` with retrieval → context → `llm.generate` → citation validation `[n]` → `grounded`/`confidence`/`citations`.
-  - **`apps/api/src/modules/ai/rag-answer.service.test.ts`**: 4 unit tests (grounded, unsupported, empty, citations).
-  - **`apps/api/src/modules/ai/rag-answer.integration.test.ts`**: 3 integration tests (grounded with citation, unsupported, tenant isolation) via `pgvector` + `mock` embeddings/LLM.
-- Prior chunk storage (P5-001):
-  - **`document_chunks` table** (`vector(1024)` pgvector/pg17) + `DocumentChunksRepository` + 8 integration tests (7 original + 1 embedding).
-- Prior chunking (P3-008):
-  - **`packages/processing` chunker** — deterministic, 500/75/700/100, paragraph→sentence→line, page-aware, overlap, Hindi support.
-- Prior metadata interface (P3-005):
-  - **`MetadataExtractor` contract** with Zod validation, `HeuristicMetadataExtractor` baseline.
-- Prior processing orchestration (P3-004):
-  - **Worker pipeline**: `document.process` job → tenant-scoped version lookup → download original → text extraction → OCR when inadequate → persist `extracted_text`/`ocr_status`/`page_count`/`processing_status` → write `extracted.txt` artifact + chunk/embed + vector/hybrid search (idempotent, tenant-aware, retryable).
+- Everything from Phases 0–2 + P3-001..P5-001 (merged into `main` via PRs #1–#24) plus all later merges through #52 (`main` at `16f908c` includes P9-001/002/008).
+- Full-text search (P5-005), embedding interface (P5-002), local embedding adapter (P5-003), generate/store embeddings (P5-004), vector search (P5-006), hybrid retrieval (P5-007), search API (P5-009), search UI (P5-010), search eval (P5-014), review queue (P4-001), supersession (P4-003), publication permission (P4-006), document detail API/page (P6-001/002), LLM provider (P8-001), local LLM adapter (P8-002), permission-aware retrieval (P8-004), context builder (P8-005), RAG answer service (P8-006), citation contract (P8-007), unsupported (P8-008), /ai/ask API (P8-009), Ask UI (P8-010), prompt-injection (P8-011), RAG eval (P8-012), cross-tenant RAG (P8-013), E2E critical path (P9-001), security regression (P9-002), final report (P9-008) — all per FINAL_IMPLEMENTATION_REPORT.md.
+- **NEW P3-006 (branch)**:
+  - **`packages/processing/src/llm-metadata-extractor.ts`**: `LlmMetadataExtractor implements MetadataExtractor` — `name() → llm:model`, `extract({text,filename,mimeType})` builds truncated (4000) prompt with `SYSTEM_PROMPT` (strict JSON, 200-char title, 500-char summary, 3-10 tags, academicYear/course/semester/language/confidence), calls `LLMProvider.generate` (temperature 0, maxTokens 800, Abort via provider), `extractJsonObject` handles fences/wrapping (` ```json` + first `{` last `}`), `normalizeResult` coerces documentType/tags/semester/academicYear/course/language/confidence, Zod validates, language fallback via heuristic if null, empty-text bypass without LLM, any throw → heuristic fallback (`HeuristicMetadataExtractor`).
+  - **`packages/processing/src/metadata-factory.ts`**: `createMetadataExtractor({provider, llmProvider})` — reads `METADATA_PROVIDER` || `LLM_PROVIDER` || `heuristic`, lowercases, `isLlm` for `llm|local|ollama|openai|vllm|http|mock`, returns `HeuristicMetadataExtractor` default else `LlmMetadataExtractor` with `createLLMProvider` (`mock` default, `local` → Ollama `qwen2:7b`).
+  - **`packages/processing/src/llm-metadata-extractor.test.ts`**: 23 unit tests (modelName, valid JSON, empty→heuristic no call, invalid JSON→heuristic, malformed, fences, wrapping, throw, empty response, tags cap/lower, course upper/semester range, documentType case/invalid, truncate marker, Hindi, factory, schema-conformant loop, plus factory suite: heuristic default, llm/local aliases, explicit provider override, llmProvider option).
+  - **`packages/processing/src/index.ts`**: re-exports `{HeuristicMetadataExtractor, createHeuristicMetadataExtractor}`, `* from './llm-metadata-extractor.js'`, `* from './metadata-factory.js'`.
+  - **`.env.example`**: documents `LLM_PROVIDER/LLM_BASE_URL/LLM_MODEL/LLM_ENDPOINT` (expanded) and `METADATA_PROVIDER=heuristic|llm|local|ollama|openai|vllm|http|mock` with note that `llm` uses `LLM_*`.
+  - Prior heuristic baseline intact (`HeuristicMetadataExtractor` 20 tests) — now superseded by LLM provider when `METADATA_PROVIDER=llm`.
 
 ## What Is Not Implemented
 
-- Phase 3 remainder: metadata extraction LLM provider (P3-006), date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
-- Search remainder: reranker (P5-008), filters/facets (P5-011), search analytics (P5-012), etc.
-- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005), etc., and Phases 6–10 (P6-003→, P8-003→, P8-007→).
+- Phase 3 remainder: date extraction (P3-007), retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
+- Search remainder: reranker (P5-008), filters/facets (P5-011), search analytics (P5-012), unresolved (P5-013).
+- Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005).
+- Phases 6 remainder: summary (P6-003 depends P3-006), important dates (P6-004 depends P3-007), bookmarks (P6-005), related (P6-006 depends P5-008), share (P6-007).
+- Phase 7 notifications (P7-001→006).
+- P8-003 cloud LLM adapter (P1), P9-003/004/005/006/007 (P1 load/metrics/backup/deploy).
 - PDF page rasterization for scanned-PDF OCR (backlogged).
 
 ## Active Blockers
 
 - PR requires human approval to merge into `main` (repository merge policy).
-- Local host Postgres (18.6 on 5432) lacks `pgvector` extension — use the project’s `pgvector/pgvector:pg17` Docker image (port 5433 for this branch’s verification) or `sudo pacman -S pgvector`; CI uses pgvector service and is green.
+- Host Postgres (18.6 on 5432) lacks `pgvector` — use docker `pgvector/pgvector:pg17` on 5434 (`DATABASE_URL=postgresql://postgres:postgres@localhost:5434/institutional_knowledge`) and `REDIS_URL=redis://localhost:6379` for verification; CI uses pgvector service and is green. Host `docker compose` postgres fails to bind 5432 when host postgres running — use separate `ikp-pgvector-test-5434` container.
 
 ## Important Decisions
 
@@ -143,15 +59,15 @@ P8-006 (Implement RAG answer service) — `apps/api/src/modules/ai/rag-answer.se
 - Stack: pnpm workspace; Fastify (API); Next.js (web); Vitest; ESLint flat config; Prettier; node-pg-migrate; PostgreSQL/pgvector (pgvector/pg17, `vector(1024)` for BGE-M3 1024 dims); Redis; MinIO (S3-compatible).
 - API and worker use distinct port variables (`API_PORT`, `WORKER_PORT`) because they share the repo `.env`.
 - Migrations are CommonJS `.js` files under `infra/migrations/`; ESLint flat config declares CJS globals for that directory.
-- AI providers remain replaceable through adapters/interfaces.
+- AI providers remain replaceable through adapters/interfaces; `METADATA_PROVIDER` env mirrors `EMBEDDING_PROVIDER`/`LLM_PROVIDER` pattern.
 - Git uses task branches and pull requests; merging into `main` requires the repository's approval policy.
 
 ## Current Git State
 
-`main` contains merged Phases 0–2 + P5-002 + P5-005 + P5-003 + P5-004 + P5-006 + P5-007 + P5-009 + P5-010 + P5-014 + P4-001 + P4-003 + P4-006 + P6-001 + P6-002 + P8-001 + P8-002 + P8-004 + P8-005 (PR #42). Task branch `feat/P8-006-rag-answer-service` adds RAG answer service, all checks green:
+`main` at `16f908c` (Merge PR #52 P9-008 MVP final gate). Task branch `feat/P3-006-metadata-llm-provider` adds LLM metadata extractor (23 tests, .env.example, index re-exports), all checks green:
 
 ```text
-lint ✅  typecheck ✅ (13/13)  tests ✅ (361, +7 RAG)  build ✅ (9/10)  format ✅  migration ✅ (pgvector)
+lint ✅  typecheck ✅  tests ✅ (438, +23)  build ✅  format ✅  migration ✅ (pgvector on 5434)
 ```
 
 ## Model Handoff Instructions
@@ -177,8 +93,8 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (361) |
-| Migrations against Postgres (up/down/up) | PASS |
+| Unit/integration tests | PASS (438) |
+| Migrations against Postgres (up/down/up) | PASS (5434 pgvector) |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
 | RBAC guard (roles, tenant scope, cross-tenant) | PASS |
@@ -214,18 +130,18 @@ When switching AI tools/models:
 | LLM provider interface (mock, deterministic, grounded) | PASS (11) |
 | Local LLM adapter (Ollama/OpenAI, chat/generate) | PASS (17) |
 | Permission-aware retrieval (PUBLISHED, tenant) | PASS (3) |
-| Context builder (maxTokens, citations, no-answer) | PASS (6) |
-| RAG answer service (grounded, citations, tenant) | PASS (7) |
+| Context builder (maxTokens, citations, no-answer) | PASS (8) |
+| RAG answer service (grounded, citations, tenant) | PASS (11) |
+| Metadata LLM provider (P3-006) | PASS (23) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
-| E2E tests | NOT STARTED (Phase 9) |
-| Security verification | NOT STARTED |
-| Search evaluation | DONE (P5-014) |
-| AI/RAG evaluation | NOT STARTED |
+| E2E tests (P9-001) | PASS (10/17 flows) |
+| Security regression (P9-002) | PASS (7) |
+| Final gate report (P9-008) | DONE |
 
 ## Next Recommended Action
 
-After P8-006 merges, start **P8-007** (Implement citation contract — P0) or **P8-008** (Implement unsupported-answer behavior — P0) or **P8-009** (Implement `/ai/ask` API — P0, depends `P8-006`+`P8-007`) or **P6-003** (Add document summary display — P1). Phase 3 P1 tasks (P3-006/007) remain P1 and can run in parallel.
+After P3-006 merges, start **P3-007** (Implement date extraction — P1, depends P3-006) or **P6-003** (Add document summary display — P1, now unblocked by P3-006) or **P4-004** (Build approval queue UI — P1) or **P5-008** (Implement reranker — P1). Phase 3 date extraction unlocks `P6-004` important dates and `P7-006` deadline reminders.
 
 ## Last Updated
 
-2026-08-20
+2026-08-21

@@ -1,11 +1,13 @@
 export * from './adequacy.js';
 export * from './chunker.js';
 export * from './embedding.js';
-export * from './heuristic-metadata-extractor.js';
+export { HeuristicMetadataExtractor, createMetadataExtractor as createHeuristicMetadataExtractor } from './heuristic-metadata-extractor.js';
 export * from './llm.js';
+export * from './llm-metadata-extractor.js';
 export * from './local-embedding-provider.js';
 export * from './local-llm-provider.js';
 export * from './metadata.js';
+export * from './metadata-factory.js';
 export * from './mock-embedding-provider.js';
 export * from './mock-llm-provider.js';
 export * from './ocr.js';
