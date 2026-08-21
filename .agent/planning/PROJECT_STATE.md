@@ -6,45 +6,44 @@
 
 ## Current Phase
 
-Phase 9 (Hardening) — P9-001 E2E + P9-002 security regression + P9-008 MVP final gate DONE; Phase 8 (Institutional AI) P0 DONE; Phase 3 P1 — P3-006 DONE (merged #53), P3-007 DONE on task branch `feat/P3-007-date-extraction`, P3-009/010 still TODO.
+Phase 9 (Hardening) — P9-001/002/008 DONE; Phase 8 (Institutional AI) P0 DONE; Phase 5 — P5-008 DONE on task branch `feat/P5-008-reranker`; Phase 3 — P3-006/007 DONE (merged #53/#54), P3-009/010 still TODO.
 
 ## Current Task
 
-**P3-007** (Implement date extraction — P1) — implementation complete on task branch `feat/P3-007-date-extraction`; 38 unit tests (17 heuristic + 21 LLM) passing, typecheck/lint/build green, 476 tests total.
+**P5-008** (Implement reranker interface/adapter — P1) — implementation complete on task branch `feat/P5-008-reranker`; 31 unit tests (Mock 16 + Local 15) passing, typecheck/lint/build green, 507 tests total.
 
 ## Current Branch
 
-`feat/P3-007-date-extraction`
+`feat/P5-008-reranker`
 
 ## Overall Status
 
-`PHASE_9_DONE` — all P0 tasks DONE and `docs/FINAL_IMPLEMENTATION_REPORT.md` at `main` `19eb735` (P3-006 merged); `PHASE_8_DONE` — all P0 DONE; `PHASE_3_PROGRESS` — P3-001..006/008 DONE, **P3-007 DONE on branch** (needs PR), P3-009/010 TODO; `PHASE_4/5/6` remain P1 UI/reranker TODO.
+`PHASE_9_DONE` — all P0 tasks DONE and `docs/FINAL_IMPLEMENTATION_REPORT.md` at `main` `f0a2c01` (P3-007 merged); `PHASE_8_DONE` — all P0 DONE; `PHASE_5_PROGRESS` — P5-001..007/009/010/014 DONE, **P5-008 DONE on branch** (needs PR), P5-011/012/013 TODO; `PHASE_3_PROGRESS` — P3-001..007/008 DONE, P3-009/010 TODO.
 
 ## Last Completed Task
 
-P3-007 (Implement date extraction — P1) — `packages/processing/src/dates.ts` (`ImportantDate`, `DateExtractionResult`, Zod `importantDateSchema`/`dateExtractionResultSchema`, `DateExtractor` interface) + `heuristic-date-extractor.ts` (`HeuristicDateExtractor` regex for `18 August 2026`/`August 18, 2026`/`2026-08-18`/`18/08/2026` with ordinal, dedup, sentence context, label/type inference for deadline/exam/registration/submission/holiday/event, confidence) + `llm-date-extractor.ts` (`LlmDateExtractor` with `LLMProvider` + heuristic fallback, `SYSTEM_PROMPT` strict JSON, `extractJsonObject`, `normalizeResult` caps 20, Zod, empty bypass) + `date-factory.ts` (`createDateExtractor` unified with `DATE_PROVIDER`/`METADATA_PROVIDER`/`LLM_PROVIDER`, heuristic default) + `heuristic-date-extractor.test.ts` 17 + `llm-date-extractor.test.ts` 21 tests + `.env.example` `DATE_PROVIDER` docs + `index.ts` re-exports; 476 tests passing (+38), typecheck/lint/build green; pgvector on 5434.
+P5-008 (Implement reranker interface/adapter — P1) — `packages/processing/src/reranker.ts` (`RerankCandidate`, `RerankedCandidate`, Zod `rerankCandidateSchema`/`rerankedCandidateSchema`, `RerankerProvider` interface with `rerank(query, candidates[])`) + `mock-reranker-provider.ts` (`MockRerankerProvider` token-overlap scoring + hash jitter 0.01, deterministic, `createRerankerProvider` factory with `RERANKER_PROVIDER`/`RERANKER_MODEL`/`RERANKER_BASE_URL`/`RERANKER_ENDPOINT`, mock default vs local) + `local-reranker-provider.ts` (`LocalRerankerProvider` for BGE `bge-reranker-base` via `POST /rerank` generic, flexible response parsing for `results[].relevance_score`/`scores[]`/`data[]`, timeout 30s, AbortController) + `mock-reranker-provider.test.ts` 16 + `local-reranker-provider.test.ts` 15 tests + `.env.example` `RERANKER_PROVIDER/MODEL/BASE_URL/ENDPOINT` docs + `index.ts` re-exports; 507 tests passing (+31), typecheck/lint/build green; pgvector on 5434.
 
 ## What Is Working
 
-- Everything from Phases 0–2 + P3-001..P5-001 merged through #53 (`main` at `19eb735` includes P3-006 LLM metadata provider).
+- Everything from Phases 0–2 + P3-001..P5-001 merged through #54 (`main` at `f0a2c01` includes P3-007 date extraction + P3-006 metadata LLM).
 - Full-text search (P5-005), embedding interface (P5-002), local embedding adapter (P5-003), generate/store embeddings (P5-004), vector search (P5-006), hybrid retrieval (P5-007), search API (P5-009), search UI (P5-010), search eval (P5-014), review queue (P4-001), supersession (P4-003), publication permission (P4-006), document detail API/page (P6-001/002), LLM provider (P8-001), local LLM adapter (P8-002), permission-aware retrieval (P8-004), context builder (P8-005), RAG answer service (P8-006), citation contract (P8-007), unsupported (P8-008), /ai/ask API (P8-009), Ask UI (P8-010), prompt-injection (P8-011), RAG eval (P8-012), cross-tenant RAG (P8-013), E2E critical path (P9-001), security regression (P9-002), final report (P9-008) — all per FINAL_IMPLEMENTATION_REPORT.md.
-- **NEW P3-007 (branch)**:
-  - **`packages/processing/src/dates.ts`**: `IMPORTANT_DATE_TYPES`/`ImportantDate`/`DateExtractionInput/Result`/`importantDateSchema`/`dateExtractionResultSchema`/`DateExtractor` interface (TECHNICAL_SPEC §8, AI_LLM §12, PRD FR-004).
-  - **`packages/processing/src/heuristic-date-extractor.ts`**: `HeuristicDateExtractor` — `MONTHS`/`MONTH_DAY_YEAR`/`ISO`/`DMY_SLASH` regexes, `isValidDate`/`toIso`, `extractSentence` 500-cap, `inferLabelAndType` (deadline/last date→DEADLINE etc), `findMatches` dedup, `extract` maps to `ImportantDate` with context/confidence, overall confidence via max.
-  - **`packages/processing/src/llm-date-extractor.ts`**: `LlmDateExtractor` — `SYSTEM_PROMPT` strict JSON (`dates[]` with raw/isoDate/label/type/context/confidence, provider llm), `truncateText` 4000, `extractJsonObject` fences, `normalizeResult` coerces type (IMPORTANT_DATE_TYPES), ISO regex, caps 20, Zod, empty bypass without LLM, throw→heuristic fallback.
-  - **`packages/processing/src/date-factory.ts`**: `createDateExtractor({provider,llmProvider})` — reads `DATE_PROVIDER`||`METADATA_PROVIDER`||`LLM_PROVIDER`||`heuristic`, `isLlm` for `llm|local|ollama|openai|vllm|http|mock`, returns `HeuristicDateExtractor` default else `LlmDateExtractor` with `createLLMProvider`.
-  - **`packages/processing/src/heuristic-date-extractor.test.ts`**: 17 tests (provider name, 18 Aug 2026 deadline, August 18 2026, ISO 2026-08-18, DMY 18/08/2026, dash/dot, ordinal 18th, exam label, empty, empty text, dedup, multiple 3, context 500, invalid 31 Feb null, schema-conformant loop, schema rejects).
-  - **`packages/processing/src/llm-date-extractor.test.ts`**: 21 unit + factory suite 8 → 29? actually 21 tests total covering modelName, valid JSON, empty→heuristic no call, invalid JSON→heuristic, fences, wrap, throw, empty response, no dates, caps 20, type case, truncate, createLlm, schema loop + factory: heuristic default, DATE_PROVIDER=llm/local aliases, fallback to METADATA/LLM, explicit override, llmProvider option.
-  - **`.env.example`**: adds `DATE_PROVIDER=heuristic|llm|local|...` docs.
-  - **`packages/processing/src/index.ts`**: re-exports `dates`, `HeuristicDateExtractor`/`createHeuristicDateExtractor`, `date-factory` (`createDateExtractor` unified), `llm-date-extractor`.
-- Prior P3-006: LlmMetadataExtractor + metadata-factory (23 tests) still passing.
+- **NEW P5-008 (branch)**:
+  - **`packages/processing/src/reranker.ts`**: `RerankCandidate`/`RerankedCandidate` + `rerankCandidateSchema`/`rerankedCandidateSchema` + `RerankerProvider` interface (`modelName()`, `rerank(query, candidates) → RerankedCandidate[]` with `rerankScore` 0..1, `rerankRank`).
+  - **`packages/processing/src/mock-reranker-provider.ts`**: `MockRerankerProvider` — token overlap (`queryTokens ∩ title+content`) / queryLen base + SHA256 jitter 0..0.01, sort by `rerankScore` DESC + originalIndex, deterministic, `createMockRerankerProvider`, `createRerankerProvider` reading `RERANKER_PROVIDER` (mock/test/heuristic default) vs `local|ollama|vllm|openai|http|bge` → `LocalRerankerProvider`.
+  - **`packages/processing/src/local-reranker-provider.ts`**: `LocalRerankerProvider` — `DEFAULT_MODEL bge-reranker-base`, `resolveEndpoint` (generic `.../rerank` vs `.../v1/` openai), `rerank` POST `{ model, query, documents: [{text, id}] }`, `parseScores` handles `results[].relevance_score|score`, `scores[]`, `data[]` + fallback numeric array search, scores capped 0..1, sorts, timeout 30s.
+  - **`packages/processing/src/mock-reranker-provider.test.ts`**: 16 tests (modelName, custom, empty query throws, empty candidates, token-overlap ranking exam top, deterministic, different query order, preserves fields, title+content, non-array throws, factory mock).
+  - **`packages/processing/src/local-reranker-provider.test.ts`**: 15 tests (modelName, custom, empty query, empty candidates no fetch, fetch results shape, scores shape, data shape, HTTP error, unexpected shape, custom endpoint, trailing slash, factory, caps 0..1, factory switch mock/local).
+  - **`.env.example`**: adds `RERANKER_PROVIDER=mock|local|...`, `RERANKER_MODEL`, `RERANKER_BASE_URL`, `RERANKER_ENDPOINT` docs.
+  - **`packages/processing/src/index.ts`**: re-exports `reranker`, `mock-reranker-provider`, `local-reranker-provider`.
+- Prior P3-007: dates (38 tests), P3-006: metadata LLM (23 tests) still passing.
 
 ## What Is Not Implemented
 
 - Phase 3 remainder: retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
-- Search remainder: reranker (P5-008), filters/facets (P5-011), search analytics (P5-012), unresolved (P5-013).
+- Search remainder: filters/facets (P5-011), search analytics (P5-012), unresolved (P5-013).
 - Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005).
-- Phases 6 remainder: summary (P6-003 now unblocked by P3-006), important dates API/UI (P6-004 now unblocked by P3-007), bookmarks (P6-005), related (P6-006 depends P5-008), share (P6-007).
+- Phases 6 remainder: summary (P6-003 now unblocked by P3-006), important dates API/UI (P6-004 now unblocked by P3-007), bookmarks (P6-005), related (P6-006 now unblocked by P5-008), share (P6-007).
 - Phase 7 notifications (P7-001→006).
 - P8-003 cloud LLM adapter (P1), P9-003/004/005/006/007 (P1 load/metrics/backup/deploy).
 - PDF page rasterization for scanned-PDF OCR (backlogged).
@@ -62,15 +61,15 @@ P3-007 (Implement date extraction — P1) — `packages/processing/src/dates.ts`
 - Stack: pnpm workspace; Fastify (API); Next.js (web); Vitest; ESLint flat config; Prettier; node-pg-migrate; PostgreSQL/pgvector (pgvector/pg17, `vector(1024)` for BGE-M3 1024 dims); Redis; MinIO (S3-compatible).
 - API and worker use distinct port variables (`API_PORT`, `WORKER_PORT`) because they share the repo `.env`.
 - Migrations are CommonJS `.js` files under `infra/migrations/`; ESLint flat config declares CJS globals for that directory.
-- AI providers remain replaceable via adapters; `METADATA_PROVIDER`/`DATE_PROVIDER` mirror `EMBEDDING_PROVIDER`/`LLM_PROVIDER` (ADR-003 local-first).
+- AI providers remain replaceable via adapters; `METADATA_PROVIDER`/`DATE_PROVIDER`/`RERANKER_PROVIDER` mirror `EMBEDDING_PROVIDER`/`LLM_PROVIDER` (ADR-003 local-first).
 - Git uses task branches and pull requests; merging into `main` requires the repository's approval policy.
 
 ## Current Git State
 
-`main` at `19eb735` (Merge PR #53 P3-006). Task branch `feat/P3-007-date-extraction` adds date extraction (38 tests, .env.example, index re-exports), all checks green:
+`main` at `f0a2c01` (Merge PR #54 P3-007). Task branch `feat/P5-008-reranker` adds reranker (31 tests, .env.example, index re-exports), all checks green:
 
 ```text
-lint ✅  typecheck ✅  tests ✅ (476, +38)  build ✅  format ✅  migration ✅ (pgvector on 5434)
+lint ✅  typecheck ✅  tests ✅ (507, +31)  build ✅  format ✅  migration ✅ (pgvector on 5434)
 ```
 
 ## Model Handoff Instructions
@@ -96,7 +95,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (476) |
+| Unit/integration tests | PASS (507) |
 | Migrations against Postgres (up/down/up) | PASS (5434 pgvector) |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -137,6 +136,7 @@ When switching AI tools/models:
 | RAG answer service (grounded, citations, tenant) | PASS (11) |
 | Metadata LLM provider (P3-006) | PASS (23) |
 | Date extraction (P3-007) | PASS (38) |
+| Reranker (P5-008) | PASS (31) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests (P9-001) | PASS (10/17 flows) |
 | Security regression (P9-002) | PASS (7) |
@@ -144,7 +144,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P3-007 merges, start **P6-004** (Add important dates API/UI — P1, now unblocked), **P6-003** (Add document summary display — P1, unblocked by P3-006), **P4-004** (Build approval queue UI — P1), or **P5-008** (Implement reranker — P1).
+After P5-008 merges, start **P6-006** (Add related documents — P1, now unblocked by P5-008) or **P6-003** (Add document summary display — P1, unblocked by P3-006) or **P6-004** (Add important dates API/UI — P1, unblocked by P3-007) or **P4-004** (Build approval queue UI — P1).
 
 ## Last Updated
 
