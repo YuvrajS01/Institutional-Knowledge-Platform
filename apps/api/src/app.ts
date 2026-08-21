@@ -22,6 +22,7 @@ import { registerBookmarksRoutes } from './modules/bookmarks/bookmarks.route.js'
 import { registerDatesRoutes } from './modules/dates/dates.route.js';
 import { registerRelatedDocumentsRoutes } from './modules/documents/related-documents.route.js';
 import { registerShareLinksRoutes } from './modules/documents/share-links.route.js';
+import { registerUnresolvedSearchesRoutes } from './modules/search/unresolved-searches.route.js';
 import { registerAnalyticsRoutes } from './modules/admin/analytics.route.js';
 import { AuditLogService } from './modules/audit/audit-log.service.js';
 import type { JobQueue } from '@ikp/queue';
@@ -86,6 +87,7 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
           });
         }
         await registerSearchRoutes(v1, { pool: options.pool!, authorization });
+        await registerUnresolvedSearchesRoutes(v1, { pool: options.pool!, authorization });
         await registerAiRoutes(v1, { pool: options.pool!, authorization });
         await registerBookmarksRoutes(v1, { pool: options.pool!, authorization });
         await registerRelatedDocumentsRoutes(v1, { pool: options.pool!, authorization });

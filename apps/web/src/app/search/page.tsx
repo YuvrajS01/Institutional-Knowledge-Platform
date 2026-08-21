@@ -60,9 +60,9 @@ function SearchContent() {
   const [showAdvanced, setShowAdvanced] = useState(
     Boolean(
       searchParams.get('academic_year') ||
-        searchParams.get('course') ||
-        searchParams.get('semester') ||
-        searchParams.get('tag'),
+      searchParams.get('course') ||
+      searchParams.get('semester') ||
+      searchParams.get('tag'),
     ),
   );
   const [page, setPage] = useState(Number(searchParams.get('page') ?? '1'));
@@ -164,7 +164,15 @@ function SearchContent() {
     if (tag) params.set('tag', tag);
     if (page !== 1) params.set('page', String(page));
     router.push(`/search?${params.toString()}`);
-    void executeSearch(query, { page, departmentId, documentType, academicYear, course, semester, tag });
+    void executeSearch(query, {
+      page,
+      departmentId,
+      documentType,
+      academicYear,
+      course,
+      semester,
+      tag,
+    });
   }
 
   function handlePageChange(newPage: number) {
@@ -272,8 +280,18 @@ function SearchContent() {
         </div>
 
         {showAdvanced && (
-          <div id="advanced-filters" className="card" style={{ margin: 0, padding: '1rem', background: '#f8fafc' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+          <div
+            id="advanced-filters"
+            className="card"
+            style={{ margin: 0, padding: '1rem', background: '#f8fafc' }}
+          >
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gap: '0.75rem',
+              }}
+            >
               <div>
                 <label htmlFor="search-year" className="muted" style={{ fontSize: '0.85rem' }}>
                   Academic year
@@ -390,6 +408,27 @@ function SearchContent() {
             <li>Try a broader phrase.</li>
           </ul>
           <p className="muted">Query: “{state.query}”</p>
+          <button
+            type="button"
+            className="secondary"
+            onClick={async () => {
+              const session = getSession();
+              if (!session) return;
+              try {
+                await apiEnvelopeRequest('/search/unresolved', {
+                  method: 'POST',
+                  token: session.accessToken,
+                  institutionId: session.institutionId,
+                  body: { query: state.query, context: {} },
+                });
+                alert('Saved as unresolved for admin review.');
+              } catch {
+                alert('Failed to save unresolved query.');
+              }
+            }}
+          >
+            Save as unresolved for admin review
+          </button>
         </div>
       )}
 
