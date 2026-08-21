@@ -325,6 +325,25 @@ export async function registerDocumentsRoutes(
   );
 
   app.post(
+    '/documents/:document_id/reject',
+    {
+      preHandler: options.authorization.guard('document.approve'),
+      config: { rateLimit: WRITE_RATE_LIMIT },
+    },
+    async (request, reply) => {
+      const parsed = documentParamsSchema.safeParse(request.params);
+      if (!parsed.success) {
+        throw new AppError('VALIDATION_ERROR', 'One or more fields are invalid.', 422, {});
+      }
+      const data = await service.transition(actorFor(request), parsed.data.document_id, 'DRAFT');
+      if (!data) {
+        throw AppError.notFound('Document not found.');
+      }
+      return reply.status(200).send({ data });
+    },
+  );
+
+  app.post(
     '/documents/:document_id/publish',
     {
       preHandler: options.authorization.guard('document.publish'),
