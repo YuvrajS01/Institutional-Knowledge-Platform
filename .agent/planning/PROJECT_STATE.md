@@ -6,41 +6,40 @@
 
 ## Current Phase
 
-Phase 9 (Hardening) — P9-001/002/008 DONE; Phase 8 (Institutional AI) P0 DONE; Phase 5 — P5-008 DONE on task branch `feat/P5-008-reranker`; Phase 3 — P3-006/007 DONE (merged #53/#54), P3-009/010 still TODO.
+Phase 9 (Hardening) — P9-001/002/008 DONE; Phase 8 (Institutional AI) P0 DONE; Phase 5 — P5-008 DONE (merged #55); Phase 3 — P3-006/007 DONE (merged #53/#54), P3-009 DONE on task branch `feat/P3-009-processing-status-ui`, P3-010 still TODO.
 
 ## Current Task
 
-**P5-008** (Implement reranker interface/adapter — P1) — implementation complete on task branch `feat/P5-008-reranker`; 31 unit tests (Mock 16 + Local 15) passing, typecheck/lint/build green, 507 tests total.
+**P3-009** (Add processing retry/status UI — P1) — implementation complete on task branch `feat/P3-009-processing-status-ui`; 9 API tests (GET processing-status + POST retry) passing, polling UI with retry, typecheck/lint/build green, 516 tests total.
 
 ## Current Branch
 
-`feat/P5-008-reranker`
+`feat/P3-009-processing-status-ui`
 
 ## Overall Status
 
-`PHASE_9_DONE` — all P0 tasks DONE and `docs/FINAL_IMPLEMENTATION_REPORT.md` at `main` `f0a2c01` (P3-007 merged); `PHASE_8_DONE` — all P0 DONE; `PHASE_5_PROGRESS` — P5-001..007/009/010/014 DONE, **P5-008 DONE on branch** (needs PR), P5-011/012/013 TODO; `PHASE_3_PROGRESS` — P3-001..007/008 DONE, P3-009/010 TODO.
+`PHASE_9_DONE` — all P0 tasks DONE and `docs/FINAL_IMPLEMENTATION_REPORT.md` at `main` `9871939` (P5-008 merged); `PHASE_8_DONE` — all P0 DONE; `PHASE_5_DONE` — P5-001..008/009/010/014 DONE, **P5-008 merged**, P5-011/012/013 TODO; `PHASE_3_PROGRESS` — P3-001..007/008 DONE, **P3-009 DONE on branch** (needs PR), P3-010 TODO.
 
 ## Last Completed Task
 
-P5-008 (Implement reranker interface/adapter — P1) — `packages/processing/src/reranker.ts` (`RerankCandidate`, `RerankedCandidate`, Zod `rerankCandidateSchema`/`rerankedCandidateSchema`, `RerankerProvider` interface with `rerank(query, candidates[])`) + `mock-reranker-provider.ts` (`MockRerankerProvider` token-overlap scoring + hash jitter 0.01, deterministic, `createRerankerProvider` factory with `RERANKER_PROVIDER`/`RERANKER_MODEL`/`RERANKER_BASE_URL`/`RERANKER_ENDPOINT`, mock default vs local) + `local-reranker-provider.ts` (`LocalRerankerProvider` for BGE `bge-reranker-base` via `POST /rerank` generic, flexible response parsing for `results[].relevance_score`/`scores[]`/`data[]`, timeout 30s, AbortController) + `mock-reranker-provider.test.ts` 16 + `local-reranker-provider.test.ts` 15 tests + `.env.example` `RERANKER_PROVIDER/MODEL/BASE_URL/ENDPOINT` docs + `index.ts` re-exports; 507 tests passing (+31), typecheck/lint/build green; pgvector on 5434.
+P3-009 (Add processing retry/status UI — P1) — `apps/api/src/modules/documents/document-versions.repository.ts` (add `processing_status` to `DocumentVersionRow` + SELECT) + `apps/api/src/modules/documents/documents.service.ts` (`getProcessingStatus` with visibility + creator/manager gate, returns version processing_status/ocr_status/page_count/has_extracted_text/is_current; `retryProcessing` creator/manager gate, latest version, `queue.enqueue` idempotent jobId, audit `document.updated` + reset FAILED→QUEUED) + `apps/api/src/modules/documents/documents.route.ts` (`GET /documents/:id/processing-status` requireMember, `POST /documents/:id/retry-processing` requireMember 202) + `apps/web/src/app/admin/documents/upload/page.tsx` (polling `processing-status` every 2s via `apiRequest`, table of version/processing/ocr/pages/text ✓, `FAILED` → Retry button, `COMPLETED` notice, Refresh) + `apps/api/src/modules/documents/processing-status.route.test.ts` 9 integration tests (GET creator 200, student 404, tenant 404, unknown 404, 401, POST retry creator 202 + enqueue + FAILED→QUEUED, student 403, tenant 404, no version 409) + `TASK_MANIFEST` P3-009 TODO→DONE; 516 tests passing (+9), typecheck/lint/build green; pgvector on 5434, web build 10 routes including /admin/documents/upload 3.09kB.
 
 ## What Is Working
 
-- Everything from Phases 0–2 + P3-001..P5-001 merged through #54 (`main` at `f0a2c01` includes P3-007 date extraction + P3-006 metadata LLM).
+- Everything from Phases 0–2 + P3-001..P5-001 merged through #55 (`main` at `9871939` includes P5-008 reranker + P3-007 dates + P3-006 metadata LLM).
 - Full-text search (P5-005), embedding interface (P5-002), local embedding adapter (P5-003), generate/store embeddings (P5-004), vector search (P5-006), hybrid retrieval (P5-007), search API (P5-009), search UI (P5-010), search eval (P5-014), review queue (P4-001), supersession (P4-003), publication permission (P4-006), document detail API/page (P6-001/002), LLM provider (P8-001), local LLM adapter (P8-002), permission-aware retrieval (P8-004), context builder (P8-005), RAG answer service (P8-006), citation contract (P8-007), unsupported (P8-008), /ai/ask API (P8-009), Ask UI (P8-010), prompt-injection (P8-011), RAG eval (P8-012), cross-tenant RAG (P8-013), E2E critical path (P9-001), security regression (P9-002), final report (P9-008) — all per FINAL_IMPLEMENTATION_REPORT.md.
-- **NEW P5-008 (branch)**:
-  - **`packages/processing/src/reranker.ts`**: `RerankCandidate`/`RerankedCandidate` + `rerankCandidateSchema`/`rerankedCandidateSchema` + `RerankerProvider` interface (`modelName()`, `rerank(query, candidates) → RerankedCandidate[]` with `rerankScore` 0..1, `rerankRank`).
-  - **`packages/processing/src/mock-reranker-provider.ts`**: `MockRerankerProvider` — token overlap (`queryTokens ∩ title+content`) / queryLen base + SHA256 jitter 0..0.01, sort by `rerankScore` DESC + originalIndex, deterministic, `createMockRerankerProvider`, `createRerankerProvider` reading `RERANKER_PROVIDER` (mock/test/heuristic default) vs `local|ollama|vllm|openai|http|bge` → `LocalRerankerProvider`.
-  - **`packages/processing/src/local-reranker-provider.ts`**: `LocalRerankerProvider` — `DEFAULT_MODEL bge-reranker-base`, `resolveEndpoint` (generic `.../rerank` vs `.../v1/` openai), `rerank` POST `{ model, query, documents: [{text, id}] }`, `parseScores` handles `results[].relevance_score|score`, `scores[]`, `data[]` + fallback numeric array search, scores capped 0..1, sorts, timeout 30s.
-  - **`packages/processing/src/mock-reranker-provider.test.ts`**: 16 tests (modelName, custom, empty query throws, empty candidates, token-overlap ranking exam top, deterministic, different query order, preserves fields, title+content, non-array throws, factory mock).
-  - **`packages/processing/src/local-reranker-provider.test.ts`**: 15 tests (modelName, custom, empty query, empty candidates no fetch, fetch results shape, scores shape, data shape, HTTP error, unexpected shape, custom endpoint, trailing slash, factory, caps 0..1, factory switch mock/local).
-  - **`.env.example`**: adds `RERANKER_PROVIDER=mock|local|...`, `RERANKER_MODEL`, `RERANKER_BASE_URL`, `RERANKER_ENDPOINT` docs.
-  - **`packages/processing/src/index.ts`**: re-exports `reranker`, `mock-reranker-provider`, `local-reranker-provider`.
-- Prior P3-007: dates (38 tests), P3-006: metadata LLM (23 tests) still passing.
+- **NEW P3-009 (branch)**:
+  - **`apps/api/src/modules/documents/document-versions.repository.ts`**: `DocumentVersionRow.processing_status: string` + `mapVersionRow` default QUEUED + `SELECT_COLUMNS`/`SELECT_COLUMNS_PREFIXED` include `processing_status`.
+  - **`apps/api/src/modules/documents/documents.service.ts`**: `getProcessingStatus(actor, documentId)` → `DocumentVersionRow[]` with visibility (STUDENT/FACULTY published check, creator/manager gate for drafts) + `retryProcessing` (creator/manager, latest version, `queue.enqueue` jobId `${docId}-v${n}-document.process`, reset FAILED→QUEUED, audit `document.updated` with `processing_retried`).
+  - **`apps/api/src/modules/documents/documents.route.ts`**: `GET /documents/:id/processing-status` (requireMember, 300/min, returns `{data: ProcessingStatusEntry[]}`) + `POST /documents/:id/retry-processing` (requireMember, 30/min, returns 202 `{data: {document_id, version_id, processing_status}}`).
+  - **`apps/web/src/app/admin/documents/upload/page.tsx`**: Adds `ProcessingStatusEntry` type, `processing`/`processingError`/`retrying` state, `fetchProcessingStatus` via `apiRequest<ProcessingStatusEntry[]>` (handles envelope unwrap), `handleRetry` POST retry-processing, `useEffect` polling every 2s when `phase==='queued'`, UI table (Version/Processing/OCR/Pages/Text), `FAILED` → Retry button, `COMPLETED` notice, Refresh.
+  - **`apps/api/src/modules/documents/processing-status.route.test.ts`**: 9 integration (pgvector:pg17, MinIO, S3, mock queue): GET 200 creator, 404 student draft, 404 tenant, 404 unknown, 401, POST 202 creator + enqueue + FAILED→QUEUED, 403 student, 404 tenant, 409 no version.
+  - **`apps/web build`**: 10 routes (`/admin/documents/upload` 3.09kB) green.
+- Prior P5-008: reranker (31 tests), P3-007: dates (38 tests), P3-006: metadata LLM (23 tests) still passing.
 
 ## What Is Not Implemented
 
-- Phase 3 remainder: retry/status UI (P3-009), scanned-PDF integration tests (P3-010).
+- Phase 3 remainder: scanned-PDF integration tests (P3-010).
 - Search remainder: filters/facets (P5-011), search analytics (P5-012), unresolved (P5-013).
 - Phases 4 remainder: approval queue UI (P4-004), version history UI (P4-005).
 - Phases 6 remainder: summary (P6-003 now unblocked by P3-006), important dates API/UI (P6-004 now unblocked by P3-007), bookmarks (P6-005), related (P6-006 now unblocked by P5-008), share (P6-007).
@@ -62,14 +61,15 @@ P5-008 (Implement reranker interface/adapter — P1) — `packages/processing/sr
 - API and worker use distinct port variables (`API_PORT`, `WORKER_PORT`) because they share the repo `.env`.
 - Migrations are CommonJS `.js` files under `infra/migrations/`; ESLint flat config declares CJS globals for that directory.
 - AI providers remain replaceable via adapters; `METADATA_PROVIDER`/`DATE_PROVIDER`/`RERANKER_PROVIDER` mirror `EMBEDDING_PROVIDER`/`LLM_PROVIDER` (ADR-003 local-first).
+- Processing status is per-version (`document_versions.processing_status`) and observable via tenant-scoped API; retry is idempotent via `jobId` `${docId}-v${n}-document.process` (AGENTS.md §10).
 - Git uses task branches and pull requests; merging into `main` requires the repository's approval policy.
 
 ## Current Git State
 
-`main` at `f0a2c01` (Merge PR #54 P3-007). Task branch `feat/P5-008-reranker` adds reranker (31 tests, .env.example, index re-exports), all checks green:
+`main` at `9871939` (Merge PR #55 P5-008). Task branch `feat/P3-009-processing-status-ui` adds processing status/retry (9 tests, upload polling UI), all checks green:
 
 ```text
-lint ✅  typecheck ✅  tests ✅ (507, +31)  build ✅  format ✅  migration ✅ (pgvector on 5434)
+lint ✅  typecheck ✅  tests ✅ (516, +9)  build ✅ (web 10/10)  format ✅  migration ✅ (pgvector on 5434)
 ```
 
 ## Model Handoff Instructions
@@ -95,7 +95,7 @@ When switching AI tools/models:
 | Lint | PASS |
 | Format | PASS |
 | Build (all packages) | PASS |
-| Unit/integration tests | PASS (507) |
+| Unit/integration tests | PASS (516) |
 | Migrations against Postgres (up/down/up) | PASS (5434 pgvector) |
 | Health/readiness live checks | PASS (API + worker) |
 | Authentication live flow (login → me) | PASS |
@@ -137,6 +137,7 @@ When switching AI tools/models:
 | Metadata LLM provider (P3-006) | PASS (23) |
 | Date extraction (P3-007) | PASS (38) |
 | Reranker (P5-008) | PASS (31) |
+| Processing status/retry (P3-009) | PASS (9) |
 | Full-text search (tsvector trigger, GIN, ranking) | PASS (4) |
 | E2E tests (P9-001) | PASS (10/17 flows) |
 | Security regression (P9-002) | PASS (7) |
@@ -144,7 +145,7 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P5-008 merges, start **P6-006** (Add related documents — P1, now unblocked by P5-008) or **P6-003** (Add document summary display — P1, unblocked by P3-006) or **P6-004** (Add important dates API/UI — P1, unblocked by P3-007) or **P4-004** (Build approval queue UI — P1).
+After P3-009 merges, start **P3-010** (Add scanned-PDF integration tests — P1) or **P4-004** (Build approval queue UI — P1) or **P6-003** (Add document summary display — P1, unblocked by P3-006) or **P6-004** (Add important dates API/UI — P1).
 
 ## Last Updated
 

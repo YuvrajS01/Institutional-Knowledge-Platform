@@ -683,6 +683,113 @@ export class DocumentsService {
     }));
   }
 
+  async getProcessingStatus(
+    actor: UploadActor,
+    documentId: string,
+  ): Promise<
+    | Array<{
+        id: string;
+        version_number: number;
+        processing_status: string;
+        ocr_status: string | null;
+        page_count: number | null;
+        has_extracted_text: boolean;
+        created_at: string;
+        is_current: boolean;
+      }>
+    | null
+  > {
+    const document = await this.documents.findById(actor.institutionId, documentId);
+    if (!document) {
+      return null;
+    }
+    // Visibility: same as get() for drafts
+    if (
+      document.status !== 'PUBLISHED' &&
+      document.status !== 'SUPERSEDED' &&
+      actor.role === 'STUDENT'
+    ) {
+      return null;
+    }
+    if (
+      document.status !== 'PUBLISHED' &&
+      document.status !== 'SUPERSEDED' &&
+      actor.role === 'FACULTY'
+    ) {
+      return null;
+    }
+    // Only creator or manager can see processing status for non-published? For PUBLISHED any member can see
+    // But for DRAFT/IN_REVIEW/APPROVED restrict to creator/manager
+    if (
+      document.status !== 'PUBLISHED' &&
+      document.status !== 'SUPERSEDED' &&
+      document.created_by !== actor.userId &&
+      !isDocumentManager(actor.role)
+    ) {
+      throw AppError.forbidden('Only the creator or a document manager can view processing status.');
+    }
+
+    const versions = await this.versions.listByDocumentId(actor.institutionId, documentId);
+    return versions.map((v) => ({
+      id: v.id,
+      version_number: v.version_number,
+      processing_status: v.processing_status,
+      ocr_status: v.ocr_status,
+      page_count: v.page_count,
+      has_extracted_text: Boolean(v.extracted_text && v.extracted_text.trim().length > 0),
+      created_at: v.created_at.toISOString(),
+      is_current: document.current_version_id === v.id,
+    }));
+  }
+
+  async retryProcessing(
+    actor: UploadActor,
+    documentId: string,
+  ): Promise<{ document_id: string; version_id: string; processing_status: string } | null> {
+    const document = await this.documents.findById(actor.institutionId, documentId);
+    if (!document) {
+      return null;
+    }
+    if (document.created_by !== actor.userId && !isDocumentManager(actor.role)) {
+      throw AppError.forbidden('Only the creator or a document manager can retry processing.');
+    }
+    const versions = await this.versions.listByDocumentId(actor.institutionId, documentId);
+    if (versions.length === 0) {
+      throw new AppError(ERROR_CODES.CONFLICT, 'No version available to process.', 409, {});
+    }
+    // Pick latest version (highest version_number)
+    const latest = versions.reduce((a, b) => (a.version_number > b.version_number ? a : b));
+    if (!this.queue) {
+      throw new AppError(ERROR_CODES.CONFLICT, 'Processing queue not configured.', 409, {});
+    }
+    // Idempotent enqueue — same jobId as confirmUpload
+    await this.queue.enqueue({
+      name: 'document.process',
+      jobId: `${documentId}-v${latest.version_number}-document.process`,
+      institutionId: actor.institutionId,
+      documentId,
+      versionId: latest.id,
+    });
+    // Optionally reset status to QUEUED if it was FAILED (best-effort, ignore errors)
+    try {
+      if (latest.processing_status === 'FAILED') {
+        await this.pool.query(
+          'UPDATE document_versions SET processing_status = $2 WHERE id = $1',
+          [latest.id, 'QUEUED'],
+        );
+      }
+    } catch {
+      // ignore
+    }
+    await this.audit.record(actor, {
+      action: 'document.updated',
+      entityType: 'document',
+      entityId: documentId,
+      metadata: { processing_retried: true, version_id: latest.id, version_number: latest.version_number },
+    });
+    return { document_id: documentId, version_id: latest.id, processing_status: 'QUEUED' };
+  }
+
   private async departmentName(
     institutionId: string,
     departmentId: string,
