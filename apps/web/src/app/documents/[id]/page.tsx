@@ -356,15 +356,43 @@ export default function DocumentDetailPage() {
       <div className="card">
         <h2>Actions</h2>
         <p className="muted">Source of truth is the approved institutional document.</p>
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
           <button
             type="button"
-            onClick={() => {
-              const url = `${window.location.origin}/documents/${document.id}`;
-              navigator.clipboard.writeText(url).catch(() => {});
+            onClick={async () => {
+              const session = getSession();
+              if (!session) return;
+              try {
+                const data = await apiRequest<{ share_url: string }>(
+                  `/documents/${document.id}/share`,
+                  {
+                    method: 'POST',
+                    token: session.accessToken,
+                    institutionId: session.institutionId,
+                  },
+                );
+                await navigator.clipboard.writeText(data.share_url);
+              } catch {
+                const url = `${window.location.origin}/documents/${document.id}`;
+                await navigator.clipboard.writeText(url).catch(() => {});
+              }
             }}
           >
-            Copy link
+            Copy share link
+          </button>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              const url = `${window.location.origin}/documents/${document.id}`;
+              if (navigator.share) {
+                navigator.share({ title: document.title, url }).catch(() => {});
+              } else {
+                navigator.clipboard.writeText(url).catch(() => {});
+              }
+            }}
+          >
+            Share
           </button>
           <Link href={`/search?q=${encodeURIComponent(document.title)}`} className="secondary-link">
             Search related
