@@ -102,19 +102,21 @@ export async function registerSearchRoutes(
       });
       const latencyMs = Date.now() - start;
 
-      // Analytics: best-effort log, do not fail search on analytics error
+      // Analytics: log search for admin analytics (await to ensure test determinism, best-effort)
       const actorUser = (request as unknown as { user?: { id: string } }).user;
       if (actorUser?.id) {
-        analytics
-          .log(institutionId, actorUser.id, queryText, results.length, latencyMs, {
+        try {
+          await analytics.log(institutionId, actorUser.id, queryText, results.length, latencyMs, {
             department_id: parsed.data.department_id,
             document_type: parsed.data.document_type,
             academic_year: parsed.data.academic_year,
             course: parsed.data.course,
             semester: parsed.data.semester,
             tag: parsed.data.tag,
-          })
-          .catch(() => {});
+          });
+        } catch {
+          // do not fail search on analytics error
+        }
       }
 
       // Facets: department + document_type counts from results (MVP, no separate agg)
