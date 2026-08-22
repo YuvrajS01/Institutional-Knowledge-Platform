@@ -20,6 +20,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:security": "vitest run tests/integration/security",
+    "test:eval": "vitest run tests/evals/search-evaluation.test.ts tests/evals/rag-evaluation.test.ts",
+    "test:eval:real": "EVAL_REAL=1 vitest run tests/evals/search-evaluation.real.test.ts tests/evals/rag-evaluation.real.test.ts",
     "db:migrate": "pnpm --filter @ikp/api db:migrate",
     "db:migrate:down": "pnpm --filter @ikp/api db:migrate:down",
     "db:seed": "pnpm build:packages && pnpm --filter @ikp/api db:seed"

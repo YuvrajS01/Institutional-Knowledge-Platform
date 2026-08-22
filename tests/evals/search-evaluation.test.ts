@@ -1,3 +1,13 @@
+/**
+ * Mock search evaluation — deterministic, no network (P5-014 + P0-C04).
+ *
+ * Uses MockEmbeddingProvider (SHA-256 hash vectors) so CI is deterministic.
+ * Thresholds here are mock-only (Recall@5 ≥0.4). Production thresholds
+ * require tests/evals/search-evaluation.real.test.ts with EVAL_REAL=1 and
+ * a real BGE-M3 provider (see tests/evals/README.md). Do not claim production
+ * quality from this file's scores.
+ */
+
 import { createHash, randomUUID } from 'node:crypto';
 
 import { Pool } from 'pg';
