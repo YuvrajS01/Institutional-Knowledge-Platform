@@ -13,7 +13,7 @@
 # From repo root, with .env (DATABASE_URL set)
 ./infra/scripts/backup.sh ./backups
 # or explicit
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/institutional_knowledge ./infra/scripts/backup.sh
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/institutional_knowledge ./infra/scripts/backup.sh
 ```
 
 Creates `./backups/<db>-<timestamp>.sql.gz` via `pg_dump | gzip -9`, verifies `gzip -t` and header, lists MinIO bucket if `mc` configured.
@@ -27,7 +27,7 @@ gzip -t ./backups/institutional_knowledge-20260820T*.sql.gz && echo OK
 # Restore (will prompt)
 ./infra/scripts/restore.sh ./backups/institutional_knowledge-20260820T*.sql.gz
 # Or to a different DB
-./infra/scripts/restore.sh ./backups/file.sql.gz postgresql://postgres:postgres@localhost:5432/institutional_knowledge_test
+./infra/scripts/restore.sh ./backups/file.sql.gz postgresql://postgres:postgres@localhost:5434/institutional_knowledge_test
 ```
 
 ## Object Storage
@@ -47,8 +47,8 @@ gzip -t ./backups/*.sql.gz
 
 # 3. Restore to test DB
 createdb institutional_knowledge_restore_test
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/institutional_knowledge_restore_test ./infra/scripts/restore.sh ./backups/*.sql.gz postgresql://postgres:postgres@localhost:5432/institutional_knowledge_restore_test
-psql postgresql://postgres:postgres@localhost:5432/institutional_knowledge_restore_test -c "SELECT count(*) FROM documents; SELECT count(*) FROM document_versions;"
+DATABASE_URL=postgresql://postgres:postgres@localhost:5434/institutional_knowledge_restore_test ./infra/scripts/restore.sh ./backups/*.sql.gz postgresql://postgres:postgres@localhost:5434/institutional_knowledge_restore_test
+psql postgresql://postgres:postgres@localhost:5434/institutional_knowledge_restore_test -c "SELECT count(*) FROM documents; SELECT count(*) FROM document_versions;"
 dropdb institutional_knowledge_restore_test
 
 # 4. Object storage
