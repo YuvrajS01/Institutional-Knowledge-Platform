@@ -27,6 +27,7 @@ export const apiEnvSchema = z
     API_PORT: z.coerce.number().int().positive().default(4000),
     DATABASE_URL: z.string().url(),
     REDIS_URL: z.string().url(),
+    CORS_ORIGINS: z.string().min(1).default('http://localhost:3000'),
     ...s3CredentialsSchema.shape,
     ...jwtSchema.shape,
     ...loggingSchema.shape,
