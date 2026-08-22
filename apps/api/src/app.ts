@@ -26,6 +26,8 @@ import { registerShareLinksRoutes } from './modules/documents/share-links.route.
 import { registerUnresolvedSearchesRoutes } from './modules/search/unresolved-searches.route.js';
 import { registerAnalyticsRoutes } from './modules/admin/analytics.route.js';
 import { AuditLogService } from './modules/audit/audit-log.service.js';
+import { metrics } from './infrastructure/metrics/metrics.js';
+import { registerMetricsRoutes } from './infrastructure/metrics/metrics.route.js';
 import type { JobQueue } from '@ikp/queue';
 
 export interface AppOptions {
@@ -61,6 +63,24 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
 
   registerErrorHandlers(app);
   registerHealthRoutes(app, options.checks);
+  registerMetricsRoutes(app);
+
+  // Metrics / tracing: request id, latency, status (P9-005)
+  app.addHook('onResponse', async (request, reply) => {
+    const latency = reply.elapsedTime;
+    metrics.record(reply.statusCode, latency);
+    // Structured log for tracing (request_id, method, url, status, latency)
+    request.log.info(
+      {
+        request_id: request.id,
+        method: request.method,
+        url: request.url,
+        statusCode: reply.statusCode,
+        latency_ms: Math.round(latency * 100) / 100,
+      },
+      'request completed',
+    );
+  });
 
   if (options.pool && options.auth) {
     const authorization = createAuthorization({
