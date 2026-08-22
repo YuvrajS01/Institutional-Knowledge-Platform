@@ -30,6 +30,16 @@ import { metrics } from './infrastructure/metrics/metrics.js';
 import { registerMetricsRoutes } from './infrastructure/metrics/metrics.route.js';
 import type { JobQueue } from '@ikp/queue';
 
+export function parseCorsOrigins(raw?: string): string[] {
+  if (!raw || !raw.trim()) {
+    return ['http://localhost:3000'];
+  }
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
 export interface AppOptions {
   logger?: FastifyServerOptions['logger'];
   loggerInstance?: FastifyServerOptions['loggerInstance'];
@@ -40,6 +50,8 @@ export interface AppOptions {
   queue?: JobQueue;
   /** Overrides the default per-route rate limit used by auth endpoints. */
   authRateLimit?: { max: number; timeWindow: string };
+  /** Explicit CORS allow-list. When omitted, `CORS_ORIGINS` env / default is used. */
+  corsOrigins?: string[];
 }
 
 export async function buildApp(options: AppOptions = {}): Promise<FastifyInstance> {
@@ -49,8 +61,25 @@ export async function buildApp(options: AppOptions = {}): Promise<FastifyInstanc
     genReqId: () => generateRequestId(),
   });
 
+  const allowedOrigins =
+    options.corsOrigins ?? parseCorsOrigins(process.env.CORS_ORIGINS);
+  const allowedSet = new Set(allowedOrigins);
+
   await app.register(cors, {
-    origin: true,
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedSet.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Institution-Id', 'Idempotency-Key'],
+    credentials: true,
   });
 
   await app.register(rateLimit, {
