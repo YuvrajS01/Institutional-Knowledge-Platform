@@ -6,19 +6,21 @@
 
 ## Current Phase
 
-Phase 9 (Hardening) — P9-001/002/008 DONE; Phase 8 (Institutional AI) P0 DONE; Phase 6 — P6-003 DONE (merged #58 at `ea0dbc6`), P6-004 DONE on task branch `feat/P6-004-important-dates`, P6-005/006/007 still TODO; Phase 4 — P4-004 DONE (merged #57), P4-005 TODO; Phase 3 — P3-006/007 DONE (merged #53/#54), P3-009 DONE (merged #56), P3-010 TODO.
+Phase 9 (Hardening) — **ALL DONE** (P9-001/002/003/004/005/006/007/008 merged through #79); Phase 8 — **ALL DONE** (P8-001…013, including P8-003 cloud LLM merged #68); Phase 7 — **ALL DONE** (P7-001…006 merged #70-75); Phase 6 — **ALL DONE** (P6-001…007 merged #61/63/64/65); Phase 5 — **ALL DONE** (P5-001…014 merged #62/66/67/69); Phase 4 — **ALL DONE** (P4-001…006 merged #57); Phase 3 — **ALL DONE** (P3-001…010 merged #53-56 etc).
+
+**Audit:** `docs/review: complete MVP audit` at `main` `60cefa6` — review at `.agent/reviews/MVP_REVIEW.md` verdict **READY WITH CONDITIONS**.
 
 ## Current Task
 
-**P6-004** (Add important dates API/UI — P1) — implementation complete on task branch `feat/P6-004-important-dates`; extracted_dates persisted via processing pipeline, GET /dates API with filters, dates page + detail card, 5 API tests passing, typecheck/lint/build green, 524 tests total.
+**MVP REVIEW** completed 2026-08-22 — see `.agent/reviews/MVP_REVIEW.md`. Next: remediate P0 conditions (CORS, helmet, compose port, stale report).
 
 ## Current Branch
 
-`feat/P6-004-important-dates`
+`main`
 
 ## Overall Status
 
-`PHASE_9_DONE` — all P0 tasks DONE and `docs/FINAL_IMPLEMENTATION_REPORT.md` at `main` `ea0dbc6` (P6-003 merged); `PHASE_8_DONE` — all P0 DONE; `PHASE_6_PROGRESS` — P6-001/002/003 DONE, **P6-004 DONE on branch** (needs PR), P6-005/006/007 TODO; `PHASE_4_PROGRESS` — P4-001/002/003/006 DONE, **P4-004 DONE (merged #57)**, P4-005 TODO; `PHASE_3_PROGRESS` — P3-001..007/008 DONE, **P3-009 DONE (merged #56)**, P3-010 TODO.
+`ALL PHASES 0-9 DONE` per `TASK_MANIFEST.md` (all P0/P1 DONE). `main` at `60cefa6` (merge #79). `PROJECT_STATE.md` previously stale at `ea0dbc6` — now reconciled. **MVP Review completed 2026-08-22** — `READY WITH CONDITIONS` (P0-C01…C05 block production; safe for staging pilot). `docs/FINAL_IMPLEMENTATION_REPORT.md` is stale (at `3ef449c`) — must be regenerated at tag `v0.1.0-mvp`.
 
 ## Last Completed Task
 
@@ -45,18 +47,12 @@ P6-004 (Add important dates API/UI — P1) — `apps/api/src/modules/documents/d
 
 ## What Is Not Implemented
 
-- Phase 3 remainder: scanned-PDF integration tests (P3-010).
-- Search remainder: filters/facets (P5-011), search analytics (P5-012), unresolved (P5-013).
-- Phases 4 remainder: version history UI (P4-005).
-- Phases 6 remainder: bookmarks (P6-005), related (P6-006 now unblocked by P5-008), share (P6-007).
-- Phase 7 notifications (P7-001→006).
-- P8-003 cloud LLM adapter (P1), P9-003/004/005/006/007 (P1 load/metrics/backup/deploy).
-- PDF page rasterization for scanned-PDF OCR (backlogged).
+- **MVP is implementation-complete per `TASK_MANIFEST.md` (all DONE).** Remaining gaps are quality/production hardening identified in `.agent/reviews/MVP_REVIEW.md`: security headers (P0-C01/02), host-port conflict (P0-C03), real-model RAG eval (P0-C04), stale `docs/FINAL_IMPLEMENTATION_REPORT.md` (P0-C05), HNSW index, OpenAPI artifact, Playwright E2E, hostile-file fuzz. PDF page rasterization for scanned-PDF OCR remains heuristic (Tesseract-only) — tracked as backlog.
 
 ## Active Blockers
 
-- PR for P6-004 requires human approval to merge into `main` (repository merge policy).
-- Host Postgres (18.6 on 5432) lacks `pgvector` — use docker `pgvector/pgvector:pg17` on 5434 (`DATABASE_URL=postgresql://postgres:postgres@localhost:5434/institutional_knowledge`) and `REDIS_URL=redis://localhost:6379`; CI green. Host docker compose postgres fails to bind 5432 when host postgres running — use `ikp-pgvector-test-5434`.
+- **P0 release blockers (see `.agent/reviews/MVP_REVIEW.md`):** CORS `origin:true` (P0-C01), no helmet/HSTS (P0-C02), compose 5432 port conflict with host Postgres 18.6 (P0-C03), mock-default eval false confidence (P0-C04), stale final report (P0-C05). Fix before production.
+- Host Postgres (18.6 on 5432) lacks `pgvector` — use `ikp-pgvector-test-5434` on 5434 (`DATABASE_URL=postgresql://postgres:postgres@localhost:5434/institutional_knowledge`); `docker-compose.yml:5432` mapping fails when host PG is running — must change to `5434:5432` or document.
 
 ## Important Decisions
 
@@ -72,11 +68,17 @@ P6-004 (Add important dates API/UI — P1) — `apps/api/src/modules/documents/d
 
 ## Current Git State
 
-`main` at `ea0dbc6` (Merge PR #58 P6-003). Task branch `feat/P6-004-important-dates` adds important dates API/UI (dates service + route + processing persistence + frontend), all checks green:
+`main` at `60cefa6` (Merge PR #79 P9-007). Audit commit `docs(review): complete MVP audit` adds `.agent/reviews/MVP_REVIEW.md` plus this state update. All checks green at audit:
 
 ```text
-lint ✅  typecheck ✅  tests ✅ (524, +5)  build ✅ (12 routes, /dates 2.42kB)  format ✅  migration ✅ (pgvector on 5434)
+lint ✅  typecheck ✅  tests ✅ (78 files, 582 tests)  build ✅ (12 routes)  format ✅  migrations ✅ (pgvector on 5434, host 5432 conflict noted)
 ```
+
+Reviews: `.agent/reviews/MVP_REVIEW.md` (READY WITH CONDITIONS, 5 P0 blockers)
+
+## Review Reference
+
+MVP audit completed 2026-08-22 — full report at `.agent/reviews/MVP_REVIEW.md` (Executive Summary: READY WITH CONDITIONS; 5 P0 blockers; 9 P1; scores; remediation plan). `TASK_MANIFEST.md` all DONE is accurate vs code; `docs/FINAL_IMPLEMENTATION_REPORT.md` at `3ef449c` is stale and must be regenerated at tag.
 
 ## Model Handoff Instructions
 
@@ -154,8 +156,8 @@ When switching AI tools/models:
 
 ## Next Recommended Action
 
-After P6-004 merges, start **P6-005** (Add bookmarks — P1, depends P6-001) or **P5-011** (Add filters/facets — P1) or **P4-005** (Build version history UI — P1) or **P6-006** (Add related documents — P1, now unblocked by P5-008).
+Remediate P0 before production: **P0-C01 CORS allow-list** → **P0-C02 helmet/HSTS** → **P0-C03 compose port (5434:5432)** → **P0-C05 regenerate `docs/FINAL_IMPLEMENTATION_REPORT.md` at tag** → **P0-C04 real-model eval smoke** → then `git tag v0.1.0-mvp`. See `.agent/reviews/MVP_REVIEW.md` §Recommended Next 10 Tasks.
 
 ## Last Updated
 
-2026-08-21
+2026-08-22 — MVP review completed (main 60cefa6, 582 tests, READY WITH CONDITIONS)
