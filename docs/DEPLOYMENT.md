@@ -13,7 +13,7 @@
 ```bash
 pnpm install
 pnpm build:packages
-docker compose up -d   # postgres:5432, redis:6379, minio:9000
+docker compose up -d   # postgres:5434->5432, redis:6379, minio:9000 (host 5434 avoids conflict with host Postgres on 5432)
 pnpm db:migrate
 pnpm dev               # api:4000, web:3000, worker:4100
 # Verify
@@ -84,7 +84,7 @@ pnpm test   # or DATABASE_URL=...:5434 REDIS_URL=... npx vitest run
 
 | Var                  | Local                                                      | Production                                                                         |
 | -------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `DATABASE_URL`       | `postgres:postgres@localhost:5432/institutional_knowledge` | `postgresql://user:pass@prod-db:5432/db` (required)                                |
+| `DATABASE_URL`       | `postgres:postgres@localhost:5434/institutional_knowledge` (host 5434 → container 5432) | `postgresql://user:pass@prod-db:5432/db` (required)                                |
 | `REDIS_URL`          | `redis://localhost:6379`                                   | `redis://:pass@prod-redis:6379`                                                    |
 | `JWT_SECRET`         | `insecure-dev...` (≥32, rejected in prod if default)       | `≥32` random (required)                                                            |
 | `S3_*`               | `minioadmin/minioadmin@localhost:9000`                     | Managed S3/R2 (required)                                                           |
